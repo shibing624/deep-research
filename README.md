@@ -59,7 +59,11 @@ Run演示脚本，查看完整的研究流程：
 python deep_research_demo.py
 ```
 
-这将执行一个示例研究，生成详细报告和简洁回答，并保存到文件中。
+这将执行一个示例研究，生成 query: {中国历史上最伟大的发明是什么？} 的详细报告，并保存到文件[report.md](https://github.com/shibing624/deep-research/blob/main/report.md)中。
+
+output:
+
+![report](https://github.com/shibing624/deep-research/blob/main/docs/report.png)
 
 ### Gradio Demo
 
@@ -86,11 +90,6 @@ curl -X POST "http://localhost:3051/api/research" \
   -H "Content-Type: application/json" \
   -d '{"query": "中国历史上最伟大的发明是什么？", "depth": 2, "breadth": 3}'
 ```
-
-output:
-
-[report.md](https://github.com/shibing624/deep-research/blob/main/report.md)
-![report](https://github.com/shibing624/deep-research/blob/main/docs/report.png)
 
 ### Python Module
 
