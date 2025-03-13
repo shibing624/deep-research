@@ -1,0 +1,23 @@
+# Deep Research Configuration
+
+# API settings
+api:
+  port: 3051
+
+# OpenAI settings
+openai:
+  api_key: "sk-xxx"  # Set your OpenAI API key here
+  base_url: "https://api.openai.com/v1"
+  model: "o3-mini"  # Default model, can be "gpt-4o", "gpt-4o-mini"
+
+# Serper settings
+serper:
+  api_key: "xxx"  # Set your Serper API key here
+  base_url: "https://google.serper.dev/search"
+
+# Research settings
+research:
+  default_breadth: 3
+  default_depth: 2
+  concurrency_limit: 2
+  context_size: 128000 

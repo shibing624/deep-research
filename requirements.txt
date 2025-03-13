@@ -1,0 +1,10 @@
+loguru
+fastapi
+uvicorn
+openai
+tiktoken
+pydantic
+httpx
+python-multipart
+gradio
+pyyaml
