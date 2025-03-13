@@ -90,7 +90,7 @@ curl -X POST "http://localhost:3051/api/research" \
 output:
 
 [report.md](https://github.com/shibing624/deep-research/blob/main/report.md)
-
+![report](https://github.com/shibing624/deep-research/blob/main/docs/report.png)
 
 ### Python Module
 
@@ -102,7 +102,7 @@ from src.deep_research import deep_research, write_final_report
 
 async def run_research():
     # Run research
-    result = await deep_research(query="Your research query", breadth=3, depth=2)
+    result = await deep_research(query="特斯拉股票走势分析", breadth=3, depth=2)
     
     # Generate report
     report = await write_final_report(
@@ -118,3 +118,52 @@ asyncio.run(run_research())
 ```
 
 Note: Since asynchronous functions are used, you need to use `asyncio.run()` or use `await` in an asynchronous context. 
+
+
+## Contact
+
+- Issue(建议)
+  ：[![GitHub issues](https://img.shields.io/github/issues/shibing624/deep-research.svg)](https://github.com/shibing624/deep-research/issues)
+- 邮件我：xuming: xuming624@qq.com
+- 微信我： 加我*微信号：xuming624, 备注：姓名-公司-NLP* 进NLP交流群。
+
+<img src="https://github.com/shibing624/deep-research/blob/main/docs/wechat.jpeg" width="200" />
+
+## Citation
+
+如果你在研究中使用了`deep-research`，请按如下格式引用：
+
+APA:
+
+```
+Xu, M. deep-research: Deep Research with LLM (Version 0.0.1) [Computer software]. https://github.com/shibing624/deep-research
+```
+
+BibTeX:
+
+```
+@misc{Xu_deep_research,
+  title={deep-research: Deep Research with LLM},
+  author={Xu Ming},
+  year={2025},
+  howpublished={\url{https://github.com/shibing624/deep-research}},
+}
+```
+
+## License
+
+授权协议为 [The Apache License 2.0](/LICENSE)，可免费用做商业用途。请在产品说明中附加`deep-research`的链接和授权协议。
+## Contribute
+
+项目代码还很粗糙，如果大家对代码有所改进，欢迎提交回本项目，在提交之前，注意以下两点：
+
+- 在`tests`添加相应的单元测试
+- 使用`python -m pytest`来运行所有单元测试，确保所有单测都是通过的
+
+之后即可提交PR。
+
+## Acknowledgements
+
+- [dzhng/deep-research](https://github.com/dzhng/deep-research)
+
+Thanks for their great work!
