@@ -16,6 +16,19 @@
 
 **Deep Research**: Python implementation of AI-powered research assistant that performs iterative, deep research on any topic by combining search engines, web scraping, and large language models.
 
+
+## Features
+
+- **多步深度搜索**：支持可配置的深度（迭代次数）和广度（搜索查询量）
+- **智能查询生成**：基于初始问题和已获取的信息自动生成后续查询
+- **多种输出格式**：支持简洁回答和详细报告两种输出模式
+- **多语言支持**：完全支持中文输入和输出
+- **多种使用方式**：
+  - 命令行界面
+  - Gradio 网页界面（支持流式输出）
+  - RESTful API
+  - Python 模块直接调用
+
 ## Setup
 
 1. Clone the repository: 
@@ -133,6 +146,13 @@ asyncio.run(run_research())
 
 Note: Since asynchronous functions are used, you need to use `asyncio.run()` or use `await` in an asynchronous context. 
 
+## 后续计划
+
+- 添加更多搜索引擎支持
+- 改进查询生成策略
+- 增强结果可视化
+- 支持更多大语言模型
+- 添加文档嵌入和向量搜索功能
 
 ## Contact
 
