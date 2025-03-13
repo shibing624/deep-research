@@ -4,27 +4,15 @@ Python implementation of AI-powered research assistant that performs iterative, 
 
 ## Setup
 
-1. Clone the repository
+1. Clone the repository: 
+
+```bash
+git clone https://github.com/shibing624/deep-research.git
+```
 2. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
-```
-
-3. Set up environment variables in a `.env` file:
-
-```
-FIRECRAWL_KEY="your_firecrawl_key"
-# If you want to use your self-hosted Firecrawl, add the following below:
-# FIRECRAWL_BASE_URL="http://localhost:3002"
-
-OPENAI_KEY="your_openai_key"
-# Optional: Use local LLM
-# OPENAI_ENDPOINT="http://localhost:1234/v1"
-# OPENAI_MODEL="your_model_name"
-
-# Optional: Use DeepSeek R1
-# FIREWORKS_KEY="your_fireworks_key"
 ```
 
 3. Create a configuration file:
@@ -98,6 +86,11 @@ curl -X POST "http://localhost:3051/api/research" \
   -H "Content-Type: application/json" \
   -d '{"query": "中国历史上最伟大的发明是什么？", "depth": 2, "breadth": 3}'
 ```
+
+output:
+
+[report.md](https://github.com/shibing624/deep-research/blob/main/report.md)
+
 
 ### Python Module
 
