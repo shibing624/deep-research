@@ -1,6 +1,21 @@
-# Open Deep Research (Python)
+<div align="center">
+  <a href="https://github.com/shibing624/deep-research">
+    <img src="https://raw.githubusercontent.com/shibing624/deep-research/main/docs/logo.png" height="150" alt="Logo">
+  </a>
+</div>
 
-Python implementation of AI-powered research assistant that performs iterative, deep research on any topic by combining search engines, web scraping, and large language models.
+-----------------
+
+# Open Deep Research (Python)
+[![Downloads](https://static.pepy.tech/badge/deep-research)](https://pepy.tech/project/deep-research)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![python_version](https://img.shields.io/badge/Python-3.8%2B-green.svg)](requirements.txt)
+[![GitHub issues](https://img.shields.io/github/issues/shibing624/deep-research.svg)](https://github.com/shibing624/deep-research/issues)
+[![Wechat Group](https://img.shields.io/badge/wechat-group-green.svg?logo=wechat)](#Contact)
+
+
+**Deep Research**: Python implementation of AI-powered research assistant that performs iterative, deep research on any topic by combining search engines, web scraping, and large language models.
 
 ## Setup
 
@@ -75,6 +90,7 @@ python main.py demo
 
 This will start a web interface where you can enter your research query, adjust parameters, and view results.
 
+![gradio](https://github.com/shibing624/deep-research/blob/main/docs/gradio.png)
 ### API
 
 Run the research assistant API:
