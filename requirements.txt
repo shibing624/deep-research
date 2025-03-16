@@ -6,5 +6,5 @@ tiktoken
 pydantic
 httpx
 python-multipart
-gradio
+gradio==5.20.1
 pyyaml

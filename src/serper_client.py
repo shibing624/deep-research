@@ -49,7 +49,7 @@ class SerperClient:
         }
 
         try:
-            logger.debug(f"Searching with query: {query}")
+            logger.debug(f"Searching Serper with query: {query}")
             response = self.client.post(
                 self.base_url,
                 headers=headers,

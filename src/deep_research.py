@@ -8,9 +8,21 @@ from .config import get_config
 from .providers import get_model, trim_prompt, generate_object
 
 from .serper_client import SerperClient
+from .mp_search_client import MPSearchClient
 
-# Initialize Serper client
-search_client = SerperClient()
+# Initialize search clients
+serper_client = SerperClient()
+mp_search_client = MPSearchClient()
+
+# Get search client based on configuration
+def get_search_client():
+    config = get_config()
+    search_source = config.get("research", {}).get("search_source", "serper")
+    
+    if search_source == "mp_search":
+        return mp_search_client
+    else:
+        return serper_client
 
 
 def system_prompt():
@@ -182,6 +194,9 @@ async def deep_research(
     """
     config = get_config()
     concurrency_limit = config["research"]["concurrency_limit"]
+    
+    # Get the configured search client
+    search_client = get_search_client()
 
     if learnings is None:
         learnings = []

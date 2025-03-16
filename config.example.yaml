@@ -20,4 +20,4 @@ research:
   default_breadth: 3
   default_depth: 2
   concurrency_limit: 2
-  context_size: 128000 
+  context_size: 128000
