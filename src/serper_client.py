@@ -1,141 +1,153 @@
+import os
+import json
+import aiohttp
 import httpx
-from typing import Dict, Any, Optional
+from typing import Dict, List, Any, Union, Optional
 from loguru import logger
 
 from .config import get_config
 
 
 class SerperClient:
-    """Client for Serper.dev Google Search API."""
-
+    """Client for the Serper.dev API to perform web searches."""
+    
     def __init__(self):
         config = get_config()
-        self.api_key = config.get("serper", {}).get("api_key")
-        self.base_url = config.get("serper", {}).get("base_url", "https://google.serper.dev/search")
-        self.client = httpx.Client(timeout=30.0)
-
-    def search(self, query: str, options: Dict[str, Any] = None) -> Dict[str, Any]:
-        """
-        Perform a search using Serper API.
+        self.api_key = os.environ.get("SERPER_API_KEY", config.get("serper", {}).get("api_key", ""))
         
-        Args:
-            query: Search query
-            options: Additional options for the search
-            
-        Returns:
-            Dict containing search results
-        """
         if not self.api_key:
-            raise ValueError("Serper API key not configured")
-
-        if options is None:
-            options = {}
-
-        # Default options
-        payload = {
-            "q": query,
-            "gl": options.get("gl", "cn"),  # Country for search results, cn 中国；us 美国
-            "num": options.get("num", 10)  # Number of results
-        }
-
-        # Add any additional options
-        for key, value in options.items():
-            if key not in payload:
-                payload[key] = value
-
-        headers = {
+            logger.warning("No Serper API key found. Searches will fail.")
+        
+        self.api_url = "https://google.serper.dev/search"
+        self.headers = {
             "X-API-KEY": self.api_key,
             "Content-Type": "application/json"
         }
-
-        try:
-            logger.debug(f"Searching Serper with query: {query}")
-            response = self.client.post(
-                self.base_url,
-                headers=headers,
-                json=payload
-            )
-            response.raise_for_status()
-            result = response.json()
-
-            # Transform the result to match the expected format from Firecrawl
-            transformed_result = self._transform_result(result, query)
-            return transformed_result
-
-        except Exception as e:
-            logger.error(f"Error searching with Serper: {str(e)}")
-            raise
-
-    def _transform_result(self, serper_result: Dict[str, Any], query: str) -> Dict[str, Any]:
+        self.organic_urls = []
+        
+    def search_sync(self, query: str) -> List[Dict[str, Any]]:
         """
-        Transform Serper API result to match the expected format from Firecrawl.
+        Perform a search using the Serper API.
         
         Args:
-            serper_result: Raw result from Serper API
-            query: Original search query
+            query: Search query
             
         Returns:
-            Transformed result in Firecrawl-compatible format
+            List of search result items
         """
-        transformed_data = []
-
-        # Process organic results
-        if "organic" in serper_result:
-            for item in serper_result["organic"]:
-                content = ""
-                if "snippet" in item:
-                    content += item["snippet"] + "\n\n"
-
-                # Add any additional content from the result
-                if "description" in item:
-                    content += item["description"] + "\n\n"
-
-                transformed_item = {
-                    "url": item.get("link", ""),
+        try:
+            payload = json.dumps({
+                "q": query
+            })
+            
+            response = httpx.post(self.api_url, headers=self.headers, data=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            self.organic_urls = self._extract_urls(result)
+            
+            # Format the results for consumption
+            formatted_results = self._format_results(result)
+            return formatted_results
+        
+        except Exception as e:
+            logger.error(f"Error searching with Serper: {str(e)}")
+            return []
+    
+    async def search(self, query: str) -> List[Dict[str, Any]]:
+        """
+        Perform an async search using the Serper API.
+        
+        Args:
+            query: Search query
+            
+        Returns:
+            List of search result items
+        """
+        try:
+            payload = json.dumps({
+                "q": query
+            })
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.api_url, headers=self.headers, data=payload) as response:
+                    result = await response.json()
+                    
+                    if response.status != 200:
+                        logger.error(f"Serper API error: {result}")
+                        return []
+                    
+                    self.organic_urls = self._extract_urls(result)
+                    
+                    # Format the results for consumption
+                    formatted_results = self._format_results(result)
+                    return formatted_results
+        
+        except Exception as e:
+            logger.error(f"Error searching with Serper: {str(e)}")
+            return []
+    
+    def _extract_urls(self, result: Dict[str, Any]) -> List[str]:
+        """
+        Extract URLs from search results.
+        
+        Args:
+            result: Search result object
+            
+        Returns:
+            List of URLs
+        """
+        urls = []
+        
+        # Extract organic results
+        if "organic" in result:
+            for item in result["organic"]:
+                if "link" in item:
+                    urls.append(item["link"])
+        
+        return urls
+    
+    def _format_results(self, result: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Format search results into a standardized format.
+        
+        Args:
+            result: Search result object
+            
+        Returns:
+            List of formatted result items
+        """
+        formatted_results = []
+        
+        # Format organic results
+        if "organic" in result:
+            for item in result["organic"]:
+                formatted_item = {
                     "title": item.get("title", ""),
-                    "content": content.strip(),
-                    "source": "serper"
+                    "url": item.get("link", ""),
+                    "snippet": item.get("snippet", ""),
+                    "content": f"{item.get('title', '')} - {item.get('snippet', '')}"
                 }
-                transformed_data.append(transformed_item)
-
-        # Process knowledge graph if available
-        if "knowledgeGraph" in serper_result:
-            kg = serper_result["knowledgeGraph"]
-            content = ""
-            if "description" in kg:
-                content += kg["description"] + "\n\n"
-
-            # Add attributes from knowledge graph
-            if "attributes" in kg:
-                for key, value in kg["attributes"].items():
-                    content += f"{key}: {value}\n"
-
-            transformed_item = {
-                "url": kg.get("website", kg.get("link", "")),
-                "title": kg.get("title", "Knowledge Graph Result"),
-                "content": content.strip(),
-                "source": "serper_knowledge_graph"
+                formatted_results.append(formatted_item)
+        
+        # Include featured snippet if available
+        if "answerBox" in result:
+            answer_box = result["answerBox"]
+            formatted_item = {
+                "title": answer_box.get("title", "Featured Snippet"),
+                "url": answer_box.get("link", ""),
+                "snippet": answer_box.get("snippet", ""),
+                "content": answer_box.get("answer", answer_box.get("snippet", ""))
             }
-            transformed_data.append(transformed_item)
-
-        # Process answer box if available
-        if "answerBox" in serper_result:
-            ab = serper_result["answerBox"]
-            content = ""
-            if "answer" in ab:
-                content += ab["answer"] + "\n\n"
-            elif "snippet" in ab:
-                content += ab["snippet"] + "\n\n"
-
-            transformed_item = {
-                "url": ab.get("link", ""),
-                "title": ab.get("title", "Featured Snippet"),
-                "content": content.strip(),
-                "source": "serper_answer_box"
-            }
-            transformed_data.append(transformed_item)
-
-        return {
-            "query": query,
-            "data": transformed_data
-        }
+            formatted_results.insert(0, formatted_item)
+        
+        return formatted_results
+    
+    def get_organic_urls(self) -> List[str]:
+        """
+        Get the URLs of organic search results from the last search.
+        
+        Returns:
+            List of URLs
+        """
+        return self.organic_urls

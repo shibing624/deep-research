@@ -4,6 +4,10 @@ import json
 from .config import get_config
 from .text_splitter import RecursiveCharacterTextSplitter
 from loguru import logger
+import os
+import sys
+from typing import Dict, Any, Optional
+import openai
 
 
 # Initialize clients based on configuration
@@ -18,17 +22,6 @@ def _get_openai_client():
     return None
 
 
-def _get_fireworks_client():
-    """Get Fireworks client if configured"""
-    config = get_config()
-    if config["fireworks"]["api_key"]:
-        return OpenAI(
-            api_key=config["fireworks"]["api_key"],
-            base_url=config["fireworks"]["base_url"]
-        )
-    return None
-
-
 # Get clients
 openai_client = _get_openai_client()
 
@@ -39,25 +32,34 @@ encoder = tiktoken.get_encoding("cl100k_base")  # Using cl100k as a replacement 
 logger.info(f"OpenAI client: {openai_client}, model: {get_config()['openai']['model']}")
 
 
-def get_model():
-    """Get the appropriate model based on configuration"""
+def get_model() -> Dict[str, Any]:
+    """
+    Get model configuration including client and model name.
+    
+    Returns:
+        Dict containing model configuration
+    """
     config = get_config()
-
-    # Check for custom model in OpenAI
-    if config["openai"]["model"] != "o3-mini" and openai_client:
-        return {
-            "client": openai_client,
-            "model": config["openai"]["model"]
-        }
-
-    # Default to OpenAI
-    if openai_client:
-        return {
-            "client": openai_client,
-            "model": "o3-mini"  # Default model
-        }
-
-    raise ValueError("No model configuration found. Please set OpenAI or Fireworks API keys in config.")
+    
+    # Get OpenAI configuration from config
+    openai_config = config.get("openai", {})
+    api_key = openai_config.get("api_key", "")
+    model = openai_config.get("model", "gpt-4o")
+    base_url = openai_config.get("base_url", None)
+    
+    # Initialize OpenAI client
+    client_args = {"api_key": api_key}
+    if base_url:
+        client_args["base_url"] = base_url
+    
+    client = openai.OpenAI(**client_args)
+    async_client = openai.AsyncOpenAI(**client_args)
+    
+    return {
+        "client": client,
+        "async_client": async_client,
+        "model": model
+    }
 
 
 def trim_prompt(prompt, context_size=None):
@@ -113,3 +115,25 @@ def generate_object(model_config, system, prompt, schema):
     # For simplicity, we're just returning the parsed JSON
     ans = json.loads(content)
     return ans
+
+
+def get_search_provider(search_source=None):
+    """
+    Get the appropriate search provider based on configuration.
+    
+    Returns:
+        An instance of the search provider class
+    """
+    if search_source is None:
+        config = get_config()
+        search_source = config.get("research", {}).get("search_source", "serper")
+    
+    if search_source == "mp_search":
+        from .mp_search_client import MPSearchClient
+        return MPSearchClient()
+    elif search_source == "tavily":
+        from .tavily_client import TavilyClient
+        return TavilyClient()
+    else:  # Default to serper
+        from .serper_client import SerperClient
+        return SerperClient()

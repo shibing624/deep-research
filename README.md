@@ -52,8 +52,41 @@ cp config.example.yaml config.yaml
 The configuration file allows you to set:
 - API keys for OpenAI, Fireworks, and Firecrawl
 - Model preferences
+- Search engine options (Serper, MP Search, and Tavily)
 - Research parameters (breadth, depth, concurrency)
 - API server settings
+
+## Search Engines
+
+Deep Research supports multiple search engines:
+
+1. **Serper** (Default): Uses Google search results via Serper.dev API
+2. **MP Search**: An alternative search provider 
+3. **Tavily**: A specialized AI-optimized search engine
+
+To use Tavily search:
+1. Get an API key from [Tavily](https://tavily.com)
+2. Add it to your config.yaml:
+   ```yaml
+   tavily:
+     api_key: "your-tavily-api-key"  # Use the token without 'Bearer' prefix
+     base_url: "https://api.tavily.com/search"
+     # Optional advanced settings:
+     # search_depth: "advanced" # or "basic" for quicker but less thorough results
+     # max_results: 5 # default is usually 5, can increase for more results
+   ```
+   Note: For Tavily, provide just the API token (e.g., "tvly-dev-xxx") without the "Bearer" prefix.
+   
+3. Set Tavily as your search source in the Gradio interface or in your config.yaml:
+   ```yaml
+   research:
+     search_source: "tavily"
+   ```
+
+The Tavily search engine provides high-quality, AI-optimized search results and may include:
+- Ranked search results with relevance scores
+- Follow-up questions (when available)
+- Direct answers for certain queries (when available)
 
 ## Usage
 

@@ -44,7 +44,7 @@ async def run_demo():
     # 生成详细报告
     logger.info("生成详细报告...")
     report = await write_final_report(
-        prompt=query,
+        query=query,
         learnings=learnings,
         visited_urls=visited_urls
     )
@@ -52,7 +52,7 @@ async def run_demo():
     # 生成简洁回答
     logger.info("生成简洁回答...")
     answer = await write_final_answer(
-        prompt=query,
+        query=query,
         learnings=learnings
     )
 

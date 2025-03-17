@@ -13,6 +13,7 @@ class ResearchRequest(BaseModel):
     query: str
     depth: Optional[int] = None
     breadth: Optional[int] = None
+    search_source: Optional[str] = None
 
 
 class ResearchResponse(BaseModel):
@@ -34,12 +35,14 @@ async def research(request: ResearchRequest):
         config = get_config()
         depth = request.depth or config["research"]["default_depth"]
         breadth = request.breadth or config["research"]["default_breadth"]
+        search_source = request.search_source or config["research"]["search_source"]
 
         # Run the deep research - now using the async version directly
         result = await deep_research(
             query=request.query,
             breadth=breadth,
-            depth=depth
+            depth=depth,
+            search_source=search_source
         )
 
         learnings = result["learnings"]
@@ -50,7 +53,7 @@ async def research(request: ResearchRequest):
 
         # Generate the final answer - now using the async version directly
         answer = await write_final_answer(
-            prompt=request.query,
+            query=request.query,
             learnings=learnings
         )
 
