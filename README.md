@@ -158,23 +158,27 @@ Or use the module directly:
 
 ```python
 import asyncio
-from src.deep_research import deep_research, write_final_report
+from src.deep_research import deep_research_stream
+
 
 async def run_research():
-    # Run research
-    result = await deep_research(query="特斯拉股票走势分析", breadth=3, depth=2)
-    
-    # Generate report
-    report = await write_final_report(
-        prompt="Your research query", 
-        learnings=result["learnings"], 
-        visited_urls=result["visitedUrls"]
-    )
-    
-    print(report)
+    # 运行研究
+    async for result in deep_research_stream(
+        query="特斯拉股票走势分析",
+        breadth=1,
+        depth=1,
+        user_clarifications={'all': 'skip'},
+        history_context=""
+    ):
+        # 如果研究完成，保存报告
+        if result.get("stage") == "completed":
+            report = result.get("final_report", "")
+            print(report)
+            break
 
-# Run asynchronous function
-asyncio.run(run_research())
+
+if __name__ == "__main__":
+    asyncio.run(run_research())
 ```
 
 Note: Since asynchronous functions are used, you need to use `asyncio.run()` or use `await` in an asynchronous context. 
