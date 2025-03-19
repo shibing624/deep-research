@@ -1,6 +1,5 @@
 import asyncio
 import platform
-import sys
 from typing import Dict, List, Any, Optional
 
 

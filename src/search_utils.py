@@ -10,13 +10,13 @@ from .config import get_config
 from .providers import get_search_provider
 
 
-async def search_and_summarize(
+async def search_with_query(
         query: str,
         config: Dict[str, Any] = None,
         search_provider=None
 ) -> Dict[str, Any]:
     """
-    Search and summarize results for a query.
+    Search results for a query.
     
     Args:
         query: The query to search for
@@ -42,10 +42,8 @@ async def search_and_summarize(
         else:
             urls = []
 
-        # Format the search results
-        formatted_results = []
-        # Default to 5 results if not specified in config
-        max_results = config.get("research", {}).get("max_results_per_query", 5)
+        # Default to 2 results if not specified in config
+        max_results = config.get("research", {}).get("max_results_per_query", 2)
 
         # Ensure results is a list before slicing
         if isinstance(results, list):
@@ -58,18 +56,7 @@ async def search_and_summarize(
             results_to_process = []
             logger.warning(f"Unexpected search results format: {type(results)}")
 
-        for idx, result in enumerate(results_to_process):
-            formatted_results.append(f"[{idx + 1}] {result}")
-
-        search_results_text = "\n\n".join(formatted_results)
-
-        # Check if we have results to summarize
-        if not formatted_results:
-            return {
-                "summary": f"No search results found for query: {query}",
-                "urls": []
-            }
-
+        search_results_text = results_to_process if results_to_process else "No search results found."
         # Return the formatted results and URLs
         return {
             "summary": search_results_text,
@@ -117,7 +104,7 @@ async def concurrent_search(
     async def search_with_semaphore(query: str) -> Dict[str, Any]:
         """Perform a search with semaphore-based concurrency control."""
         async with semaphore:
-            return await search_and_summarize(query, config, search_provider)
+            return await search_with_query(query, config, search_provider)
 
     # Create tasks for all queries
     tasks = [search_with_semaphore(query) for query in queries]

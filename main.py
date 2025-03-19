@@ -1,152 +1,64 @@
 #!/usr/bin/env python3
 import argparse
-
+import asyncio
 from src.config import load_config, get_config
-from src.deep_research import deep_research_sync, write_final_report_sync, write_final_answer_sync
+from src.deep_research import write_final_report_sync, write_final_answer_sync, deep_research_stream
 from loguru import logger
 
 
-def run_api(port):
-    """Run the FastAPI server"""
-    import uvicorn
+async def run_research(args):
+    # 加载配置
     config = get_config()
-    port = port or config["api"]["port"]
-    logger.info(f"Starting API server on port {port}")
-    uvicorn.run("src.api:app", host="0.0.0.0", port=port, reload=False)
 
-def run_research(args):
-    """Run research directly from command line"""
-    logger.info(f"Starting research on query: {args.query}")
-    logger.info(f"Parameters: breadth={args.breadth}, depth={args.depth}")
+    # 定义研究问题
+    query = args.query
 
-    # Define progress callback
+    # 定义进度回调函数
     def progress_callback(progress):
-        # Check if this is a step update
-        if "step" in progress:
-            step = progress["step"]
-            message = progress.get("message", "")
-            
-            if step == "clarification":
-                logger.info(f"Step: Clarification - {message}")
-            elif step == "planning":
-                logger.info(f"Step: Planning - {message}")
-            elif step == "direct_answer":
-                logger.info(f"Step: Direct Answer - {message}")
-            else:
-                logger.info(f"Step: {step} - {message}")
-            return
-        
-        # Regular progress update
         depth = progress.get("currentDepth", 0)
-        total_depth = progress.get("totalDepth", 1)
+        total_depth = progress.get("totalDepth", 0)
         completed = progress.get("completedQueries", 0)
         total = progress.get("totalQueries", 0)
         current = progress.get("currentQuery", "")
 
-        logger.info(f"Progress: Depth {depth}/{total_depth}, Queries {completed}/{total} - Current: {current}")
+        logger.info(f"进度: 深度 {depth}/{total_depth}, 查询 {completed}/{total} - 当前: {current}")
 
-    # Start the research process
-    result = deep_research_sync(
-        query=args.query,
-        breadth=args.breadth,
-        depth=args.depth,
-        on_progress=progress_callback
-    )
-    
-    # Check if we need clarification
-    if result.get("awaiting_clarification", False):
-        questions = result.get("questions", [])
-        
-        print("\n" + "=" * 50)
-        print("CLARIFICATION QUESTIONS")
-        print("=" * 50)
-        print("\nTo provide more accurate results, please answer these questions:")
-        print("(Press Enter to skip a question and use the default assumption)\n")
-        
-        # Collect user responses
-        user_clarifications = {}
-        for q in questions:
-            key = q.get("key", "")
-            question = q.get("question", "")
-            default = q.get("default", "")
-            
-            print(f"\nQ: {question}")
-            print(f"Default: {default}")
-            
-            answer = input("Your answer (or press Enter to skip): ").strip()
-            if answer:
-                user_clarifications[key] = answer
-        
-        print("\nProcessing your answers...\n")
-        
-        # Option to skip all questions
-        if not user_clarifications:
-            print("You skipped all questions. Proceeding with default assumptions.")
-        
-        # Continue research with clarifications
-        result = deep_research_sync(
-            query=args.query,
-            breadth=args.breadth,
-            depth=args.depth,
+    # 运行研究
+    logger.info(f"开始研究: {query}")
+
+    # 使用流式研究，通过user_clarifications跳过澄清步骤
+    async for result in deep_research_stream(
+            query=query,
             on_progress=progress_callback,
-            user_clarifications=user_clarifications
-        )
+            user_clarifications={'all': 'skip'},  # 使用特殊标记跳过澄清
+            history_context=""  # 添加空的history_context
+    ):
+        # 处理状态更新
+        if result.get("status_update"):
+            logger.info(f"状态更新: {result['status_update']}")
 
-    # Check for error
-    if "error" in result:
-        logger.error(f"Research error: {result['error']}")
-        return
-    
-    # Check if this was a direct answer (no search needed)
-    if not result.get("requires_search", True) and "direct_answer" in result:
-        direct_answer = result["direct_answer"]
-        
-        print("\n" + "=" * 50)
-        print(f"DIRECT ANSWER FOR: {args.query}")
-        print("=" * 50 + "\n")
-        print(direct_answer)
-        print("\n" + "=" * 50)
-        
-        # Save output to file
-        output_file = "answer.txt"
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(direct_answer)
-        
-        logger.info(f"Answer saved to {output_file}")
-        return
+        # 如果研究完成，获取最终报告
+        if result.get("stage") == "completed":
+            learnings = result.get("learnings", [])
+            visited_urls = result.get("visitedUrls", [])
+            final_report = result.get("final_report", "")
 
-    learnings = result.get("learnings", [])
-    visited_urls = result.get("visitedUrls", [])
+            logger.info(f"研究完成! 发现 {len(learnings)} 条学习内容和 {len(visited_urls)} 个来源。")
 
-    logger.info(f"\nResearch complete! Found {len(learnings)} learnings and {len(visited_urls)} sources.")
+            # 保存结果到文件
+            with open("report.md", "w", encoding="utf-8") as f:
+                f.write(final_report)
 
-    # Generate report or answer based on mode
-    if args.mode == "report":
-        output = write_final_report_sync(
-            query=args.query,
-            learnings=learnings,
-            visited_urls=visited_urls
-        )
-        output_file = "report.md"
-    else:  # answer mode
-        output = write_final_answer_sync(
-            query=args.query,
-            learnings=learnings
-        )
-        output_file = "answer.txt"
+            logger.info("报告已保存到 report.md")
 
-    # Save output to file
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(output)
+            print("\n" + "=" * 50)
+            print(f"研究问题: {query}")
+            print("=" * 50)
+            print("\n研究报告:")
+            print(final_report)
+            print("\n" + "=" * 50)
 
-    logger.info(f"Output saved to {output_file}")
-
-    # Print output to console
-    print("\n" + "=" * 50)
-    print(f"RESEARCH RESULTS FOR: {args.query}")
-    print("=" * 50 + "\n")
-    print(output)
-    print("\n" + "=" * 50)
+            break
 
 
 def main():
@@ -163,18 +75,10 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
-    # API server command
-    api_parser = subparsers.add_parser("api", help="Run the API server")
-    api_parser.add_argument(
-        "--port", type=int, default=None,
-        help="Port to run the API server on (default from config)"
-    )
-
-    # Frontend server command
-    frontend_parser = subparsers.add_parser("frontend", help="Run the frontend web interface")
-    frontend_parser.add_argument(
-        "--port", type=int, default=None,
-        help="Port to run the frontend server on (default from config: 3000)"
+    # demo command
+    demo_parser = subparsers.add_parser("demo", help="Run the gradio demo server")
+    demo_parser.add_argument(
+        "--host", type=str, default='0.0.0.0', help="Host ip"
     )
 
     # Research command
@@ -183,28 +87,6 @@ def main():
         "query", type=str,
         help="Research query"
     )
-
-    config = get_config()
-    default_breadth = config["research"]["default_breadth"]
-    default_depth = config["research"]["default_depth"]
-
-    research_parser.add_argument(
-        "--breadth", type=int, default=default_breadth,
-        help=f"Research breadth - number of search queries per iteration (default: {default_breadth})"
-    )
-    research_parser.add_argument(
-        "--depth", type=int, default=default_depth,
-        help=f"Research depth - number of recursive iterations (default: {default_depth})"
-    )
-    research_parser.add_argument(
-        "--mode", choices=["report", "answer"], default="report",
-        help="Output mode: detailed report or concise answer (default: report)"
-    )
-
-    # Demo command
-    demo_parser = subparsers.add_parser("demo", help="Run the Gradio demo interface")
-
-    # Parse arguments
     args = parser.parse_args()
 
     # Load configuration
@@ -212,10 +94,8 @@ def main():
         load_config(args.config)
 
     # Execute command
-    if args.command == "api":
-        run_api(args.port)
-    elif args.command == "research":
-        run_research(args)
+    if args.command == "research":
+        asyncio.run(run_research(args))
     elif args.command == "demo":
         from src.gradio_chat import run_gradio_demo
         run_gradio_demo()

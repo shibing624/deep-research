@@ -92,31 +92,6 @@ def trim_prompt(prompt, context_size=None):
     return trim_prompt(trimmed_prompt, context_size)
 
 
-def generate_object(model_config, system, prompt, schema):
-    """Generate structured output from the model"""
-    client = model_config["client"]
-    model_name = model_config["model"]
-    if schema:
-        prompt = f"{prompt}\n\njson schema: \n{schema}"
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt}
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.7
-    )
-
-    # Extract and return the JSON content
-    content = response.choices[0].message.content
-    logger.debug(f"Generated content: {content}")
-    # In a real implementation, we would validate against the schema here
-    # For simplicity, we're just returning the parsed JSON
-    ans = json.loads(content)
-    return ans
-
-
 def get_search_provider(search_source=None):
     """
     Get the appropriate search provider based on configuration.

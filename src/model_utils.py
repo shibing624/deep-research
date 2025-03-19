@@ -116,7 +116,6 @@ async def generate_json_completion(
 
         # Parse the JSON response
         result = json.loads(response_text)
-        logger.debug(f"prompt: {prompt}\n\nGenerated JSON completion: {result}")
         return result
 
     except json.JSONDecodeError as e:

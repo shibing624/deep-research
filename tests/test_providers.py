@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from src.providers import get_model, trim_prompt, generate_object
+from src.providers import get_model, trim_prompt
 
 
 class TestProviders(unittest.TestCase):
@@ -45,37 +45,6 @@ class TestProviders(unittest.TestCase):
         # 验证结果被裁剪
         self.assertLess(len(result), len(prompt))
 
-    @patch('src.providers.get_model')
-    def test_generate_object(self, mock_get_model):
-        """测试生成结构化对象"""
-        # 模拟模型配置
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.choices[0].message.content = '{"result": "test"}'
-        mock_client.chat.completions.create.return_value = mock_response
-
-        mock_get_model.return_value = {
-            "client": mock_client,
-            "model": "test-model"
-        }
-
-        # 生成对象
-        result = generate_object(
-            model_config=mock_get_model.return_value,
-            system="test system",
-            prompt="test prompt",
-            schema=None
-        )
-
-        # 验证结果
-        self.assertEqual(result, {"result": "test"})
-
-        # 验证调用
-        mock_client.chat.completions.create.assert_called_once()
-        args, kwargs = mock_client.chat.completions.create.call_args
-        self.assertEqual(kwargs["model"], "test-model")
-        self.assertEqual(kwargs["messages"][0]["role"], "system")
-        self.assertEqual(kwargs["messages"][1]["role"], "user")
 
 
 if __name__ == '__main__':

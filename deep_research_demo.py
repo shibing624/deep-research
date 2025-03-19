@@ -3,7 +3,7 @@ import asyncio
 from loguru import logger
 
 from src.config import get_config
-from src.deep_research import deep_research_stream, write_final_report_stream
+from src.deep_research import deep_research_stream
 
 
 async def run_demo():
@@ -14,7 +14,7 @@ async def run_demo():
     config = get_config()
 
     # 定义研究问题
-    query = "中国历史上最伟大的发明是什么？"
+    query = "中国元朝的货币制度改革的影响意义？"
 
     # 定义进度回调函数
     def progress_callback(progress):
@@ -32,8 +32,6 @@ async def run_demo():
     # 使用流式研究，通过user_clarifications跳过澄清步骤
     async for result in deep_research_stream(
         query=query,
-        breadth=1,  # 每次迭代的搜索查询数量
-        depth=1,  # 递归迭代次数
         on_progress=progress_callback,
         user_clarifications={'all': 'skip'},  # 使用特殊标记跳过澄清
         history_context=""  # 添加空的history_context
@@ -56,7 +54,6 @@ async def run_demo():
             
             logger.info("报告已保存到 report.md")
             
-            # 打印简洁回答
             print("\n" + "=" * 50)
             print(f"研究问题: {query}")
             print("=" * 50)

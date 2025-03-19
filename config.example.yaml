@@ -1,9 +1,5 @@
 # Deep Research Configuration
 
-# API settings
-api:
-  port: 3051
-
 # OpenAI settings
 openai:
   api_key: "sk-xxx"  # Set your OpenAI API key here
@@ -25,9 +21,10 @@ tavily:
 
 # Research settings
 research:
-  default_breadth: 3
-  default_depth: 2
-  concurrency_limit: 2
+  default_breadth: 1
+  default_depth: 1
+  concurrency_limit: 1
   context_size: 128000
-  # Uncomment and set to "tavily" to use Tavily search engine
   search_source: "serper"
+  max_results_per_query: 1
+  enable_summary: false

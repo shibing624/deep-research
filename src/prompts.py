@@ -3,7 +3,6 @@ Prompts used for deep research functionality.
 """
 from datetime import datetime
 
-
 now = datetime.now().isoformat()
 SYSTEM_PROMPT = f"""You are an expert researcher. Today is {now}. Follow these instructions when responding:
 - You may be asked to research subjects that is after your knowledge cutoff, assume the user is right when presented with news.
@@ -29,7 +28,7 @@ SHOULD_CLARIFY_QUERY_PROMPT = """
 {history_context}
 ```
 
-查询是: '{query}'
+查询是: ```{query}```
 
 请只回答 "yes" 或 "no"。如果查询已经足够清晰，请回答"no"。
 """
@@ -43,7 +42,7 @@ chat history:
 {history_context}
 ```
 
-The query is: '{query}'
+The query is: ```{query}```
 
 Based on this query, please generate clarifying questions that would help you better understand what the user is looking for.
 For effective questions:
@@ -75,15 +74,21 @@ For simple factual queries or clear requests, clarification is usually not neede
 PROCESS_CLARIFICATIONS_PROMPT = """
 I'm reviewing a user query with clarification questions and their responses.
 
-Chat history: ```{history_context}```
+Chat history: ```
+{history_context}
+```
 
-Original query: {query}
+Original query: ```{query}```
 
 Clarification questions and responses:
+```
 {clarifications}
+```
 
 Questions that were not answered:
+```
 {unanswered_questions}
+```
 
 Based on this information, please:
 1. Summarize the original query with the additional context provided by the clarifications
@@ -101,13 +106,50 @@ Format your response as a valid JSON object with the following structure:
 }}
 """
 
+# Prompt for no clarifications needed
+PROCESS_NO_CLARIFICATIONS_PROMPT = """
+I'm reviewing a user query where they chose not to provide any clarifications.
+
+Chat history: 
+```
+{history_context}
+```
+
+Original query: ```{query}```
+
+The user was asked the following clarification questions but chose not to answer any:
+```
+{unanswered_questions}
+```
+
+Since the user didn't provide any clarifications, please:
+1. Analyze the original query as comprehensively as possible
+2. Make reasonable assumptions for all ambiguous aspects
+3. Determine if this is a simple factual query that doesn't require search
+4. If possible, provide a direct answer along with the refined query
+- User's question is written in Chinese, 需要用中文输出.
+
+Format your response as a valid JSON object with the following structure:
+{{
+  "refined_query": "The refined query with all possible considerations",
+  "assumptions": ["List of all assumptions made"],
+  "requires_search": true/false (boolean indicating if this query needs web search or can be answered directly),
+  "direct_answer": "If requires_search is false, provide a comprehensive direct answer here, otherwise empty string"
+}}
+
+Since the user chose not to provide clarifications, be as thorough and comprehensive as possible in your analysis and answer.
+"""
+
 # Prompt for generating research plan
 RESEARCH_PLAN_PROMPT = """
 You are an expert researcher creating a flexible research plan for a given query. 
 
-Chat history: ```{history_context}```
+Chat history: 
+```
+{history_context}
+```
 
-QUERY: {query}
+QUERY: ```{query}```
 
 Please analyze this query and create an appropriate research plan. The number of steps should vary based on complexity:
 - For simple questions, you might need only 1-2 steps
@@ -135,22 +177,30 @@ Format your response as a valid JSON object with the following structure:
   ]
 }}
 
-Make each step logical and focused on a specific aspect of the research. Steps should build on each other, and search queries should be specific and effective for web search.
+Make each step logical and focused on a specific aspect of the research. Steps should build on each other, 
+and search queries should be specific and effective for web search.
 """
 
 # Prompt for summarizing search results
 SUMMARIZE_SEARCH_RESULTS_PROMPT = """
-The following are search results for the query: {query}
+The following are search results for the query: ```{query}```
 
+search result: 
+```
 {search_results}
+```
 
-Please provide a summary in English that captures the most relevant and 
-important information from these search results. Be faithful to the search results
-and don't add speculative information. If the results are limited or don't seem to 
+Please provide a summary that captures the most relevant and 
+important information from these search results.
+
+Be faithful to the search results and don't add speculative information. If the results are limited or don't seem to 
 answer the query well, acknowledge that in your summary.
+User's question is written in Chinese, 需要用中文输出.
 
-Write the information in standard Markdown format.
-- User's question is written in Chinese, 需要用中文输出.
+Output your response in the following JSON format:
+{{
+  "summaries": [{{"summary": "The summary content1", "url": "url 1"}}, {{"summary": "The summary content 2", "url": "url 2"}}, ...]
+}}
 """
 
 # Prompt for determining next research steps
@@ -160,14 +210,21 @@ determine what we should search next to further the research. The goal is to ide
 gaps in the current findings, or to explore other related areas/questions that would provide 
 a more complete understanding of the topic.
 
-Query: {query}
-Search Plan Step: {current_step}
+Query: ```{query}```
+
+Search Plan Step: 
+```
+{current_step}
+```
+
 Current Search Results:
+```
 {content}
+```
 
 What should we search for next? Reply with a JSON object containing the following:
 - "nextQueries": a list of up to {next_queries_count} search queries that would help continue the research.
-- "learnings": a list of up to 5 key facts or insights we have learned from the content that help answer the original query.
+- "learnings": a list of key facts or insights we have learned from the content that help answer the original query, include cite url.
 
 For the next queries, make sure they:
 1. Address aspects of the topic that haven't been covered yet
@@ -179,16 +236,18 @@ For the next queries, make sure they:
 Output your response in the following JSON format:
 {{
   "nextQueries": ["query 1", "query 2", ...],
-  "learnings": ["learning 1", "learning 2", ...]
+  "learnings": [{{"insight": "learning 1", "url": "url 1"}}, {{"insight": "learning 2", "url": "url 2"}}, ...]
 }}
 """
 
 # Prompt for final research summary
 RESEARCH_SUMMARY_PROMPT = """
-Based on our research, we've explored the query: {query}
+Based on our research, we've explored the query: ```{query}```
 
 Research Summary by Step:
+```
 {steps_summary}
+```
 
 Please analyze this information and provide:
 1. A set of key findings that answer the main query
@@ -197,7 +256,7 @@ Please analyze this information and provide:
 
 Format your response as a valid JSON object with:
 {{
-  "findings": ["finding 1", "finding 2", ...], (key conclusions from the research)
+  "findings": [{{"finding": "finding 1", "url": "cite url 1"}}, {{"finding": "finding 2", "url": "cite url 2"}}, ...], (key conclusions from the research, and the cite url)
   "gaps": ["gap 1", "gap 2", ...], (areas where more research is needed)
   "recommendations": ["recommendation 1", "recommendation 2", ...] (suggestions for further research directions)
 }}
@@ -205,29 +264,45 @@ Format your response as a valid JSON object with:
 
 # Prompt for final report
 FINAL_REPORT_PROMPT = """
-I've been researching the following topic: {prompt}
+I've been researching the following query: ```{query}```
 
-Chat history: ```{history_context}```
+Please write a comprehensive research report on this topic.
+The report should be well-structured with headings, subheadings, and a conclusion.
 
-Here are the key learnings from my research:
-{learnings}
+[要求]：
+- 输出markdown格式的回答。
+- [context]是参考资料，回答中需要包含引用来源，格式为 [cite](url) ，其中url是实际的链接。
+- 除代码、专名外，你必须使用与问题相同语言回答。
 
-Here are the sources I've consulted:
-{sources}
+Chat history:
+```
+{history_context}
+```
 
-Please write a comprehensive research report on this topic, incorporating the learnings and citing the sources where appropriate. The report should be well-structured with headings, subheadings, and a conclusion.
-- User's question is written in Chinese, 需要用中文输出.
+[context]:
+```
+{context}
+```
 """
 
 # Prompt for final answer
 FINAL_ANSWER_PROMPT = """
-I've been researching the following topic: {prompt}
+I've been researching the following query: ```{query}```
 
-Chat history: ```{history_context}```
+详细、专业回答用户的query。
 
-Here are the key learnings from my research:
-{learnings}
+[要求]：
+- 输出markdown格式的回答。
+- [context]是参考资料，回答中需要包含引用来源，格式为 [cite](url) ，其中url是实际的链接。
+- 除代码、专名外，你必须使用与问题相同语言回答。
 
-Please provide a concise answer to the original query based on these learnings.
-- User's question is written in Chinese, 需要用中文输出.
-""" 
+Chat history: 
+```
+{history_context}
+```
+
+[context]:
+```
+{context}
+```
+"""

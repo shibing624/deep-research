@@ -26,7 +26,6 @@
 - **多种使用方式**：
   - 命令行界面
   - Gradio 网页界面（支持流式输出）
-  - RESTful API
   - Python 模块直接调用
 
 ## Setup
@@ -99,10 +98,7 @@ The main.py script provides several ways to use the research assistant:
 python main.py --help
 
 # Run research directly from command line
-python main.py research "Your research query" --breadth 3 --depth 2 --mode report
-
-# Start the API server
-python main.py api --port 3051
+python main.py research "中国2024年经济情况分析"
 
 # Launch the Gradio demo interface
 python main.py demo
@@ -136,21 +132,6 @@ python main.py demo
 This will start a web interface where you can enter your research query, adjust parameters, and view results.
 
 ![gradio](https://github.com/shibing624/deep-research/blob/main/docs/gradio.png)
-### API
-
-Run the research assistant API:
-
-```bash
-uvicorn src.api:app --reload
-```
-
-Then you can use API via HTTP request:
-
-```bash
-curl -X POST "http://localhost:3051/api/research" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "中国历史上最伟大的发明是什么？", "depth": 2, "breadth": 3}'
-```
 
 ### Python Module
 
@@ -165,8 +146,6 @@ async def run_research():
     # 运行研究
     async for result in deep_research_stream(
         query="特斯拉股票走势分析",
-        breadth=1,
-        depth=1,
         user_clarifications={'all': 'skip'},
         history_context=""
     ):
