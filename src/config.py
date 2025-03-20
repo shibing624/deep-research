@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+@author:XuMing(xuming624@qq.com)
+@description:
+"""
 import os
 import yaml
 from typing import Dict, Any, Optional
@@ -5,9 +10,6 @@ from loguru import logger
 
 # Default configuration
 DEFAULT_CONFIG = {
-    "api": {
-        "port": 3051
-    },
     "openai": {
         "api_key": None,
         "base_url": "https://api.openai.com/v1",
@@ -22,9 +24,7 @@ DEFAULT_CONFIG = {
         "base_url": "https://api.tavily.com/search"
     },
     "research": {
-        "default_breadth": 3,
-        "default_depth": 2,
-        "concurrency_limit": 2,
+        "concurrency_limit": 1,
         "context_size": 128000,
         "search_source": "serper",
         "max_results_per_query": 5
@@ -72,37 +72,6 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
             return load_config(default_path)
         else:
             logger.info("No configuration file found, using defaults")
-
-    # Override with environment variables (for backward compatibility)
-    # OpenAI
-    if os.getenv("OPENAI_KEY"):
-        config["openai"]["api_key"] = os.getenv("OPENAI_KEY")
-    if os.getenv("OPENAI_ENDPOINT"):
-        config["openai"]["base_url"] = os.getenv("OPENAI_ENDPOINT")
-    if os.getenv("CUSTOM_MODEL"):
-        config["openai"]["model"] = os.getenv("CUSTOM_MODEL")
-
-    # Fireworks
-    if os.getenv("FIREWORKS_KEY"):
-        config["fireworks"]["api_key"] = os.getenv("FIREWORKS_KEY")
-
-    # Serper
-    if os.getenv("SERPER_KEY"):
-        config["serper"]["api_key"] = os.getenv("SERPER_KEY")
-
-    # Tavily
-    if os.getenv("TAVILY_KEY"):
-        # Store the raw API key/token without the 'Bearer' prefix
-        config["tavily"]["api_key"] = os.getenv("TAVILY_KEY")
-    if os.getenv("TAVILY_BASE_URL"):
-        config["tavily"]["base_url"] = os.getenv("TAVILY_BASE_URL")
-
-    # Research settings
-    if os.getenv("CONTEXT_SIZE"):
-        try:
-            config["research"]["context_size"] = int(os.getenv("CONTEXT_SIZE"))
-        except (ValueError, TypeError):
-            pass
 
     # Store the config globally
     _config = config

@@ -15,13 +15,11 @@ async def run_research(args):
 
     # 定义进度回调函数
     def progress_callback(progress):
-        depth = progress.get("currentDepth", 0)
-        total_depth = progress.get("totalDepth", 0)
         completed = progress.get("completedQueries", 0)
         total = progress.get("totalQueries", 0)
         current = progress.get("currentQuery", "")
 
-        logger.info(f"进度: 深度 {depth}/{total_depth}, 查询 {completed}/{total} - 当前: {current}")
+        logger.info(f"进度: 查询 {completed}/{total} - 当前: {current}")
 
     # 运行研究
     logger.info(f"开始研究: {query}")

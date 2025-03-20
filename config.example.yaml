@@ -15,14 +15,9 @@ serper:
 tavily:
   api_key: "tvly-dev-xxx"  # Use the token without 'Bearer' prefix
   base_url: "https://api.tavily.com/search"
-  # Additional options that can be passed to Tavily API:
-  # search_depth: "advanced" # can be "basic" or "advanced"
-  # max_results: 5 # number of results to return (default is typically 5)
 
 # Research settings
 research:
-  default_breadth: 1
-  default_depth: 1
   concurrency_limit: 1
   context_size: 128000
   search_source: "serper"

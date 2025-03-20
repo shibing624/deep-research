@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+@author:XuMing(xuming624@qq.com)
+@description:
+"""
 import os
 import json
 import aiohttp
@@ -13,7 +18,7 @@ class SerperClient:
     
     def __init__(self):
         config = get_config()
-        self.api_key = os.environ.get("SERPER_API_KEY", config.get("serper", {}).get("api_key", ""))
+        self.api_key = config.get("serper", {}).get("api_key", "")
         
         if not self.api_key:
             logger.warning("No Serper API key found. Searches will fail.")

@@ -49,11 +49,9 @@ cp config.example.yaml config.yaml
 ```
 
 The configuration file allows you to set:
-- API keys for OpenAI, Fireworks, and Firecrawl
+- API keys for OpenAI, Tavily, and Serper
 - Model preferences
 - Search engine options (Serper, MP Search, and Tavily)
-- Research parameters (breadth, depth, concurrency)
-- API server settings
 
 ## Search Engines
 
@@ -70,9 +68,6 @@ To use Tavily search:
    tavily:
      api_key: "your-tavily-api-key"  # Use the token without 'Bearer' prefix
      base_url: "https://api.tavily.com/search"
-     # Optional advanced settings:
-     # search_depth: "advanced" # or "basic" for quicker but less thorough results
-     # max_results: 5 # default is usually 5, can increase for more results
    ```
    Note: For Tavily, provide just the API token (e.g., "tvly-dev-xxx") without the "Bearer" prefix.
    

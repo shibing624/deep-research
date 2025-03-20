@@ -1,4 +1,7 @@
+# -*- coding: utf-8 -*-
 """
+@author:XuMing(xuming624@qq.com)
+@description:
 Utility functions for handling search operations, including concurrent searches.
 """
 

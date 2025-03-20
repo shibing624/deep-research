@@ -1,4 +1,8 @@
+# -*- coding: utf-8 -*-
 """
+@author:XuMing(xuming624@qq.com)
+@description:
+
 Client for Tavily Search API.
 
 curl -X POST https://api.tavily.com/search \\

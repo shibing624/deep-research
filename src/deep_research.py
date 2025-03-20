@@ -1,32 +1,47 @@
+# -*- coding: utf-8 -*-
 """
-Deep research functionality for comprehensive multi-step research.
+@author:XuMing(xuming624@qq.com)
+@description:
+
+Deep research functionality for comprehensive research.
 """
 
 import asyncio
 import json
 import traceback
 import inspect
+import platform
 from typing import Optional, Callable, Dict, List, Any, Union, Tuple, AsyncGenerator
 from loguru import logger
 
 from .config import get_config
 from .providers import get_search_provider
-from .utils import add_event_loop_policy
 from .prompts import (
-    SYSTEM_PROMPT,
     SHOULD_CLARIFY_QUERY_PROMPT,
     FOLLOW_UP_QUESTIONS_PROMPT,
     PROCESS_NO_CLARIFICATIONS_PROMPT,
     PROCESS_CLARIFICATIONS_PROMPT,
     RESEARCH_PLAN_PROMPT,
-    SUMMARIZE_SEARCH_RESULTS_PROMPT,
+EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT,
+    EXTRACT_SEARCH_RESULTS_PROMPT,
     RESEARCH_FROM_CONTENT_PROMPT,
     RESEARCH_SUMMARY_PROMPT,
+    FINAL_REPORT_SYSTEM_PROMPT,
     FINAL_REPORT_PROMPT,
     FINAL_ANSWER_PROMPT
 )
 from .model_utils import generate_completion, generate_json_completion
 from .search_utils import search_with_query
+
+
+def add_event_loop_policy():
+    """Add event loop policy for Windows if needed."""
+    if platform.system() == "Windows":
+        try:
+            # Set event loop policy for Windows
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        except Exception as e:
+            print(f"Error setting event loop policy: {e}")
 
 
 async def should_clarify_query(query: str, history_context: str = '') -> bool:
@@ -62,7 +77,7 @@ async def generate_followup_questions(query: str, history_context: str = '') -> 
         prompt = FOLLOW_UP_QUESTIONS_PROMPT.format(query=query, history_context=history_context)
 
         # Generate the followup questions
-        result = await generate_json_completion(prompt, system_message=SYSTEM_PROMPT, temperature=0.7)
+        result = await generate_json_completion(prompt, temperature=0.7)
 
         # Ensure the expected structure
         if "needs_clarification" not in result:
@@ -179,7 +194,7 @@ async def generate_research_plan(query: str, history_context: str = "") -> Dict[
         prompt = RESEARCH_PLAN_PROMPT.format(query=query, history_context=history_context)
 
         # Generate the research plan
-        result = await generate_json_completion(prompt, system_message=SYSTEM_PROMPT, temperature=0.7)
+        result = await generate_json_completion(prompt, temperature=0.7)
 
         # Ensure the expected structure
         if "steps" not in result or not result["steps"]:
@@ -187,7 +202,7 @@ async def generate_research_plan(query: str, history_context: str = "") -> Dict[
             result["steps"] = [{
                 "step_id": 1,
                 "description": "Research the query",
-                "search_query": query,
+                "search_queries": [query],
                 "goal": "Find information about the query"
             }]
 
@@ -205,38 +220,38 @@ async def generate_research_plan(query: str, history_context: str = "") -> Dict[
             "steps": [{
                 "step_id": 1,
                 "description": "Research the query",
-                "search_query": query,
+                "search_queries": [query],
                 "goal": "Find information about the query"
             }]
         }
 
 
-async def summarize_search_results(query: str, search_results: str) -> str:
+async def extract_search_results(query: str, search_results: str) -> str:
     """
-    Summarize search results for a query.
+    Extract search results for a query.
 
     Args:
         query: The search query
         search_results: Formatted search results text
 
     Returns:
-        Summarized search results
+        extracted search results
     """
     try:
         # Format the prompt
-        prompt = SUMMARIZE_SEARCH_RESULTS_PROMPT.format(
+        prompt = EXTRACT_SEARCH_RESULTS_PROMPT.format(
             query=query,
             search_results=search_results
         )
 
-        # Generate the summary
-        summary = await generate_json_completion(prompt, temperature=0)
-        summary_str = json.dumps(summary, ensure_ascii=False)
-        return summary_str
+        # Generate the extracted_contents_str
+        extracted_contents = await generate_json_completion(prompt, system_message=EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT,temperature=0)
+        extracted_contents_str = json.dumps(extracted_contents, ensure_ascii=False)
+        return extracted_contents_str
 
     except Exception as e:
-        logger.error(f"Error summarizing search results: {str(e)}")
-        return f"Error summarizing results for '{query}': {str(e)}"
+        logger.error(f"Error extract search results: {str(e)}")
+        return f"Error extract results for '{query}': {str(e)}"
 
 
 async def write_final_report_stream(query: str, context: list,
@@ -270,7 +285,7 @@ async def write_final_report_stream(query: str, context: list,
         yield chunk
 
 
-async def write_final_answer_stream(query: str, context: List[Dict[str, Any]],
+async def future_research(query: str, context: str,
                                     history_context: str = '') -> AsyncGenerator[str, None]:
     """
     Streaming version of write_final_answer that yields chunks of the answer.
@@ -301,7 +316,7 @@ async def write_final_answer_stream(query: str, context: List[Dict[str, Any]],
         yield chunk
 
 
-async def write_final_report(query: str, context: List[Dict[str, Any]], history_context: str = '') -> str:
+async def write_final_report(query: str, context: str, history_context: str = '') -> str:
     """
     Generate a final research report based on learnings and sources.
 
@@ -322,14 +337,14 @@ async def write_final_report(query: str, context: List[Dict[str, Any]], history_
 
     report = await generate_completion(
         prompt=formatted_prompt,
-        system_message=SYSTEM_PROMPT,
+        system_message=FINAL_REPORT_SYSTEM_PROMPT,
         temperature=0.7
     )
 
     return report
 
 
-async def write_final_answer(query: str, context: List[Dict[str, Any]], history_context: str = '') -> str:
+async def write_final_answer(query: str, context: str, history_context: str = '') -> str:
     """
     Generate a final concise answer based on the research.
 
@@ -349,14 +364,14 @@ async def write_final_answer(query: str, context: List[Dict[str, Any]], history_
 
     answer = await generate_completion(
         prompt=formatted_prompt,
-        system_message=SYSTEM_PROMPT,
+        system_message=FINAL_REPORT_SYSTEM_PROMPT,
         temperature=0.7
     )
 
     return answer
 
 
-def write_final_report_sync(query: str, context: List[Dict[str, Any]], history_context: str = '') -> str:
+def write_final_report_sync(query: str, context: str, history_context: str = '') -> str:
     """
     Synchronous wrapper for the write_final_report function.
 
@@ -387,7 +402,7 @@ def write_final_report_sync(query: str, context: List[Dict[str, Any]], history_c
     )
 
 
-def write_final_answer_sync(query: str, context: List[Dict[str, Any]], history_context: str = '') -> str:
+def write_final_answer_sync(query: str, context: str, history_context: str = '') -> str:
     """
     Synchronous wrapper for the write_final_answer function.
 
@@ -420,43 +435,28 @@ def write_final_answer_sync(query: str, context: List[Dict[str, Any]], history_c
 
 async def research_step(
         query: str,
-        depth: int,
-        breadth: int,
         config: Dict[str, Any],
         on_progress: Optional[Callable] = None,
         search_provider=None,
-        step_info: Dict[str, Any] = None,
-        all_learnings: List[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Perform a single step of the research process.
 
     Args:
         query: The query to research
-        depth: Current depth level
-        breadth: Number of queries to generate
         config: Configuration dictionary
         on_progress: Optional callback for progress updates
         search_provider: Search provider instance
-        step_info: Information about the current research plan step
-        all_learnings: List of learnings accumulated so far
 
     Returns:
         Dict with research results
     """
-    if all_learnings is None:
-        all_learnings = []
-
     if search_provider is None:
         search_provider = get_search_provider()
 
     # Progress update
     if on_progress:
         progress_data = {
-            "currentDepth": depth,
-            "totalDepth": config["research"]["default_depth"],
-            "completedQueries": 0,
-            "totalQueries": breadth,
             "currentQuery": query
         }
 
@@ -473,51 +473,18 @@ async def research_step(
 
     enable_summary = config.get("research", {}).get("enable_summary", True)
     if enable_summary:
-        summary = await summarize_search_results(query, search_results_text)
+        extracted_content = await extract_search_results(query, search_results_text)
     else:
-        summary = search_results_text
-
-    # If we've reached the maximum depth, just return the summary
-    if depth <= 0:
-        return {
-            "summary": summary,
-            "urls": urls,
-            "nextQueries": [],
-            "learnings": []
-        }
-
-    if enable_summary and breadth > 0:
-        # Figure out what to search next based on learnings so far
-        prompt = RESEARCH_FROM_CONTENT_PROMPT.format(
-            query=query,
-            current_step=json.dumps(step_info, ensure_ascii=False) if step_info else "No specific step information",
-            content=summary,
-            next_queries_count=breadth
-        )
-
-        # Generate the next queries and learnings
-        research_output = await generate_json_completion(prompt, temperature=0.7)
-    else:
-        research_output = {}
-    # Extract the next queries and learnings
-    next_queries = research_output.get("nextQueries", [])
-    new_learnings = research_output.get("learnings", [])
-
-    # Update learnings in the structured format
-    all_learnings.extend(new_learnings)
+        extracted_content = search_results_text
 
     return {
-        "summary": summary,
+        "extracted_content": extracted_content,
         "urls": urls,
-        "nextQueries": next_queries,
-        "learnings": new_learnings
     }
 
 
 async def deep_research_stream(
         query: str,
-        breadth: int = None,
-        depth: int = None,
         on_progress: Optional[Callable] = None,
         user_clarifications: Dict[str, str] = None,
         search_source: Optional[str] = None,
@@ -528,8 +495,6 @@ async def deep_research_stream(
 
     Args:
         query: The research query
-        breadth: Number of parallel queries to run at each step
-        depth: Number of iterations to perform
         on_progress: Optional callback function for progress updates
         user_clarifications: User responses to clarification questions
         search_source: Optional search provider to use
@@ -540,13 +505,7 @@ async def deep_research_stream(
     """
     # Load configuration
     config = get_config()
-
-    # Use defaults from config if not specified
-    if breadth is None:
-        breadth = config["research"]["default_breadth"]
-    if depth is None:
-        depth = config["research"]["default_depth"]
-    logger.debug(f"query: {query}, config: {config}, current breadth: {breadth}, current depth: {depth}")
+    logger.debug(f"query: {query}, config: {config}")
 
     # Initialize tracking variables
     visited_urls = []
@@ -721,14 +680,14 @@ async def deep_research_stream(
         for step_idx, step in enumerate(steps):
             step_id = step.get("step_id", step_idx + 1)
             description = step.get("description", f"Research step {step_id}")
-            search_query = step.get("search_query", refined_query)
+            search_queries = step.get("search_queries", [refined_query])
 
             yield {
                 "status_update": f"开始研究步骤 {step_id}/{len(steps)}: {description}",
                 "learnings": all_learnings,
                 "visitedUrls": visited_urls,
                 "current_query": refined_query,
-                "step_query": search_query,
+                "search_queries": search_queries,
                 "current_step": step,
                 "progress": {
                     "current_step": step_id,
@@ -738,107 +697,73 @@ async def deep_research_stream(
             }
 
             # Create a queue of queries to process for this step
-            queries_to_process = [search_query]
             step_urls = []
             step_learnings = []
             search_contents = []
 
-            # Process the initial query and follow-ups
-            current_depth = depth
-            total_processed = 0
+            current_queries = search_queries.copy()
+            # Research these queries concurrently
+            yield {
+                "status_update": f"步骤 {step_id}/{len(steps)}: 并行研究 {len(current_queries)} 个查询",
+                "learnings": all_learnings,
+                "visitedUrls": visited_urls,
+                "current_queries": current_queries,
+                "progress": {
+                    "current_step": step_id,
+                    "total_steps": len(steps),
+                    "processed_queries": len(current_queries),
+                },
+                "stage": "processing_queries"
+            }
 
-            while queries_to_process and current_depth > 0:
-                # Get the next queries to process (up to breadth)
-                current_queries = queries_to_process[:breadth]
-                remaining_queries = len(queries_to_process) - len(current_queries)
-                queries_to_process = queries_to_process[breadth:]
+            # Process each query in the current batch
+            research_tasks = []
+            for current_query in current_queries:
+                task = research_step(
+                    query=current_query,
+                    config=config,
+                    on_progress=on_progress,
+                    search_provider=search_provider,
+                )
+                research_tasks.append(task)
 
-                # Research these queries concurrently
-                yield {
-                    "status_update": f"步骤 {step_id}/{len(steps)}: 并行研究 {len(current_queries)} 个查询，剩余队列: {remaining_queries}",
-                    "learnings": all_learnings,
-                    "visitedUrls": visited_urls,
-                    "current_queries": current_queries,
-                    "depth_level": current_depth,
-                    "max_depth": depth,
-                    "progress": {
-                        "current_step": step_id,
-                        "total_steps": len(steps),
-                        "current_depth": current_depth,
-                        "max_depth": depth,
-                        "processed_queries": total_processed,
-                        "remaining_queries": remaining_queries
-                    },
-                    "stage": "processing_queries"
-                }
+            # Execute tasks with concurrency
+            results = await asyncio.gather(*research_tasks)
 
-                # Process each query in the current batch
-                research_tasks = []
-                for current_query in current_queries:
-                    task = research_step(
-                        query=current_query,
-                        depth=current_depth,
-                        breadth=breadth,
-                        config=config,
-                        on_progress=on_progress,
-                        search_provider=search_provider,
-                        step_info=step,
-                        all_learnings=all_learnings
-                    )
-                    research_tasks.append(task)
+            # Process the results
+            new_urls = []
+            for result in results:
+                # Update tracking variables
+                step_urls.extend(result["urls"])
+                new_urls.extend(result["urls"])
+                search_contents.append(result["extracted_content"])
+                step_learnings.append(result["extracted_content"])
 
-                # Execute tasks with concurrency
-                results = await asyncio.gather(*research_tasks)
+            # Format learnings and URLs for display
+            formatted_learnings = []
+            for i, learning in enumerate(step_learnings):
+                formatted_learnings.append(f"[{i + 1}] {learning}")
 
-                # Process the results
-                new_learnings = []
-                new_urls = []
-                for result in results:
-                    # Update tracking variables
-                    step_urls.extend(result["urls"])
-                    new_urls.extend(result["urls"])
-                    step_learnings.extend(result["learnings"])
-                    new_learnings.extend(result["learnings"])
-                    search_contents.append(result["summary"])
-                    total_processed += 1
+            formatted_urls = []
+            for i, url in enumerate(new_urls):
+                formatted_urls.append(f"[{i + 1}] {url}")
 
-                    # Add the new queries to our queue
-                    next_queries = result["nextQueries"]
-                    queries_to_process.extend(next_queries)
-
-                # Decrement depth for next iteration
-                current_depth -= 1
-
-                # Format learnings and URLs for display
-                formatted_learnings = []
-                for i, learning in enumerate(new_learnings):
-                    formatted_learnings.append(f"[{i + 1}] {learning}")
-
-                formatted_urls = []
-                for i, url in enumerate(new_urls):
-                    formatted_urls.append(f"[{i + 1}] {url}")
-
-                if len(new_learnings) == 0 and len(search_contents) > 0:
-                    new_learnings = [str(i)[:400] for i in search_contents]
-
-                yield {
-                    "status_update": f"步骤 {step_id}/{len(steps)}: 发现 {len(new_learnings)} 个新见解",
-                    "learnings": all_learnings + step_learnings,
-                    "visitedUrls": visited_urls + step_urls,
-                    "new_learnings": new_learnings,
-                    "formatted_new_learnings": formatted_learnings,
-                    "new_urls": new_urls,
-                    "formatted_new_urls": formatted_urls,
-                    "next_queries": queries_to_process[:3],  # Show a few upcoming queries
-                    "progress": {
-                        "current_step": step_id,
-                        "total_steps": len(steps),
-                        "current_depth": current_depth,
-                        "max_depth": depth,
-                        "processed_queries": total_processed
-                    },
-                    "stage": "insights_found"
-                }
+            new_learnings = [str(i)[:400] for i in step_learnings]
+            yield {
+                "status_update": f"步骤 {step_id}/{len(steps)}: 发现 {len(new_learnings)} 个新见解",
+                "learnings": all_learnings + step_learnings,
+                "visitedUrls": visited_urls + step_urls,
+                "new_learnings": new_learnings,
+                "formatted_new_learnings": formatted_learnings,
+                "new_urls": new_urls,
+                "formatted_new_urls": formatted_urls,
+                "progress": {
+                    "current_step": step_id,
+                    "total_steps": len(steps),
+                    "processed_queries": len(current_queries)
+                },
+                "stage": "insights_found"
+            }
 
             # Update visited URLs and learnings
             visited_urls.extend(step_urls)
@@ -858,8 +783,6 @@ async def deep_research_stream(
             for i, learning in enumerate(step_learnings):
                 formatted_step_learnings.append(f"[{i + 1}] {learning}")
 
-            if len(step_learnings) == 0 and len(all_search_contents) > 0:
-                step_learnings = [i[:400] for i in all_search_contents]
             # Step completion update
             yield {
                 "status_update": f"完成研究步骤 {step_id}/{len(steps)}: {description}，获得 {len(step_learnings)} 个见解",
@@ -891,36 +814,36 @@ async def deep_research_stream(
                 for s in step_summaries
             ])
 
-            final_prompt = RESEARCH_SUMMARY_PROMPT.format(
+            future_research = RESEARCH_SUMMARY_PROMPT.format(
                 query=refined_query,
                 steps_summary=steps_summary_text
             )
 
-            final_result = await generate_json_completion(final_prompt, temperature=0.7)
+            future_research_result = await generate_json_completion(future_research, temperature=0.7)
 
             # Add final findings to learnings
-            final_findings = []
-            if "findings" in final_result:
-                all_learnings.extend(final_result["findings"])
-                final_findings = final_result["findings"]
+            findings = []
+            if "findings" in future_research_result:
+                all_learnings.extend(future_research_result["findings"])
+                findings = future_research_result["findings"]
 
             # Format final findings
             formatted_findings = []
-            for i, finding in enumerate(final_findings):
+            for i, finding in enumerate(findings):
                 formatted_findings.append(f"[{i + 1}] {finding}")
 
             yield {
-                "status_update": f"分析完成，得出 {len(final_findings)} 个主要发现",
+                "status_update": f"分析完成，得出 {len(findings)} 个主要发现",
                 "learnings": all_learnings,
                 "visitedUrls": visited_urls,
-                "final_findings": final_findings,
+                "final_findings": findings,
                 "formatted_final_findings": formatted_findings,
-                "gaps": final_result.get("gaps", []),
-                "recommendations": final_result.get("recommendations", []),
+                "gaps": future_research_result.get("gaps", []),
+                "recommendations": future_research_result.get("recommendations", []),
                 "stage": "analysis_completed"
             }
         else:
-            final_result = ""
+            future_research_result = ""
             all_learnings = all_search_contents
 
         yield {
@@ -931,7 +854,8 @@ async def deep_research_stream(
         }
 
         # Generate report (non-streaming for now)
-        final_report = await write_final_report(refined_query, all_learnings, history_context)
+        context = str(all_learnings) + '\n\n' + str(future_research_result)
+        final_report = await write_final_report(refined_query, context, history_context)
 
         # Return compiled results
         yield {
@@ -940,7 +864,7 @@ async def deep_research_stream(
             "originalQuery": query,
             "learnings": all_learnings,
             "visitedUrls": list(set(visited_urls)),
-            "summary": final_result,
+            "summary": future_research_result,
             "final_report": final_report,
             "stage": "completed"
         }

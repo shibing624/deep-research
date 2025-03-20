@@ -1,22 +1,13 @@
+# -*- coding: utf-8 -*-
 """
+@author:XuMing(xuming624@qq.com)
+@description:
+
 Prompts used for deep research functionality.
 """
 from datetime import datetime
 
 now = datetime.now().isoformat()
-SYSTEM_PROMPT = f"""You are an expert researcher. Today is {now}. Follow these instructions when responding:
-- You may be asked to research subjects that is after your knowledge cutoff, assume the user is right when presented with news.
-- The user is a highly experienced analyst, no need to simplify it, be as detailed as possible and make sure your response is correct.
-- Be highly organized.
-- Suggest solutions that I didn't think about.
-- Be proactive and anticipate my needs.
-- Treat me as an expert in all subject matter.
-- Mistakes erode my trust, so be accurate and thorough.
-- Provide detailed explanations, I'm comfortable with lots of detail.
-- Value good arguments over authorities, the source is irrelevant.
-- Consider new technologies and contrarian ideas, not just the conventional wisdom.
-- User's question is written in Chinese, 需要用中文输出.
-"""
 
 SHOULD_CLARIFY_QUERY_PROMPT = """
 请判断以下查询是否需要澄清问题。
@@ -152,9 +143,9 @@ Chat history:
 QUERY: ```{query}```
 
 Please analyze this query and create an appropriate research plan. The number of steps should vary based on complexity:
-- For simple questions, you might need only 1-2 steps
-- For moderately complex questions, 3-4 steps may be appropriate
-- For very complex questions, 5 or more steps may be needed
+- For simple questions, you might need only 1 steps
+- For moderately complex questions, 2 steps may be appropriate
+- For very complex questions, 3 or more steps may be needed
 - User's question is written in Chinese, 需要用中文输出.
 
 Consider:
@@ -170,7 +161,7 @@ Format your response as a valid JSON object with the following structure:
     {{
       "step_id": 1,
       "description": "Description of this research step",
-      "search_query": "Search query for this step",
+      "search_queries": ["search query 1", "search query 2", ...],
       "goal": "What this step aims to discover"
     }},
     ... additional steps as needed ...
@@ -181,26 +172,28 @@ Make each step logical and focused on a specific aspect of the research. Steps s
 and search queries should be specific and effective for web search.
 """
 
-# Prompt for summarizing search results
-SUMMARIZE_SEARCH_RESULTS_PROMPT = """
-The following are search results for the query: ```{query}```
+# Prompt for extract search results
+EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT = "You are an expert in extracting relevant information."
+EXTRACT_SEARCH_RESULTS_PROMPT = """
+User query: ```{query}```
 
-search result: 
+search result(Webpage Content): 
 ```
 {search_results}
 ```
 
-Please provide a summary that captures the most relevant and 
-important information from these search results.
-
-Be faithful to the search results and don't add speculative information. If the results are limited or don't seem to 
-answer the query well, acknowledge that in your summary.
+You are an expert information extractor. Given the user's query, the search query that led to this page,
+and the webpage content, extract all pieces of information that are useful for answering the user's query.
 User's question is written in Chinese, 需要用中文输出.
 
 Output your response in the following JSON format:
 {{
-  "summaries": [{{"summary": "The summary content1", "url": "url 1"}}, {{"summary": "The summary content 2", "url": "url 2"}}, ...]
+  "extracted_infos": [{{"info": "The extracted content1", "url": "url 1"}}, {{"info": "The extracted content 2", "url": "url 2"}}, ...]
 }}
+
+- extracted_infos: The extract content from the webpage contains information that is useful for addressing the query.
+- info: The extracted relevant context as plain text.
+- url: The URL of the webpage where the information was found.
 """
 
 # Prompt for determining next research steps
@@ -260,6 +253,20 @@ Format your response as a valid JSON object with:
   "gaps": ["gap 1", "gap 2", ...], (areas where more research is needed)
   "recommendations": ["recommendation 1", "recommendation 2", ...] (suggestions for further research directions)
 }}
+"""
+
+FINAL_REPORT_SYSTEM_PROMPT = f"""You are an expert researcher. Today is {now}. Follow these instructions when responding:
+- You may be asked to research subjects that is after your knowledge cutoff, assume the user is right when presented with news.
+- The user is a highly experienced analyst, no need to simplify it, be as detailed as possible and make sure your response is correct.
+- Be highly organized.
+- Suggest solutions that I didn't think about.
+- Be proactive and anticipate my needs.
+- Treat me as an expert in all subject matter.
+- Mistakes erode my trust, so be accurate and thorough.
+- Provide detailed explanations, I'm comfortable with lots of detail.
+- Value good arguments over authorities, the source is irrelevant.
+- Consider new technologies and contrarian ideas, not just the conventional wisdom.
+- User's question is written in Chinese, 需要用中文输出.
 """
 
 # Prompt for final report

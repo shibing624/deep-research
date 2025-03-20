@@ -1,4 +1,8 @@
+# -*- coding: utf-8 -*-
 """
+@author:XuMing(xuming624@qq.com)
+@description:
+
 A simplified Gradio demo for Deep Research with basic conversation interface.
 This version uses the latest Gradio features with ChatMessage for a modern UI.
 """
@@ -94,8 +98,6 @@ async def handle_research_progress(partial_result, thinking_msg, log_msg, conver
                 progress = partial_result.get("progress")
                 if "current_step" in progress and "total_steps" in progress:
                     log_msg.content += f"\n\n**进度**: 步骤 {progress['current_step']}/{progress['total_steps']}"
-                    if "current_depth" in progress and "max_depth" in progress:
-                        log_msg.content += f", 深度 {progress['current_depth']}/{progress['max_depth']}"
                     if "processed_queries" in progress:
                         log_msg.content += f", 已处理 {progress['processed_queries']} 个查询"
 
@@ -115,8 +117,6 @@ def run_gradio_demo():
         "current_query": "",
         "needs_clarification": False,
         "questions": [],
-        "depth": 0,  # 这只是初始默认值，会被UI设置覆盖
-        "breadth": 0,  # 这只是初始默认值，会被UI设置覆盖
         "waiting_for_clarification": False,
         "clarification_answers": {},
         "report_mode": True,  # 总是生成详细报告
@@ -126,17 +126,14 @@ def run_gradio_demo():
         "history_chat": []
     }
 
-    async def research_with_thinking(message, history, depth, breadth, search_source):
+    async def research_with_thinking(message, history, search_source):
         """Process the query with progressive thinking steps shown in the UI"""
         if not message:
             yield history
             return
 
-        logger.debug(f"Starting research, message: {message}, history: {history}, depth: {depth}, breadth: {breadth}, "
+        logger.debug(f"Starting research, message: {message}, history: {history}, "
                      f"search_source: {search_source}")
-        # 记录用户设置的研究参数
-        conversation_state["depth"] = depth
-        conversation_state["breadth"] = breadth
         conversation_state["search_source"] = search_source
 
         # 重置最后状态
@@ -218,7 +215,7 @@ def run_gradio_demo():
 
         # 展示研究配置
         thinking_msg.content = "搜索相关信息中..."
-        log_msg.content += f"\n\n### 研究配置\n**搜索提供商**: {search_source}\n**深度**: {depth}\n**广度**: {breadth}\n"
+        log_msg.content += f"\n\n### 研究配置\n**搜索提供商**: {search_source}\n"
         yield [thinking_msg, log_msg]
 
         # Track current plan and report for streaming
@@ -227,8 +224,6 @@ def run_gradio_demo():
         # Perform the research with streaming support
         async for partial_result in deep_research_stream(
                 query=message,
-                depth=depth,
-                breadth=breadth,
                 search_source=search_source,
                 history_context=history_context
         ):
@@ -246,11 +241,11 @@ def run_gradio_demo():
                         metadata={"title": "_研究报告_", "id": 2}
                     )
                     yield [thinking_msg, log_msg, report_msg]
-                
+
                 # 累积报告内容
                 report_msg.content += partial_result["final_report_chunk"]
                 yield [thinking_msg, log_msg, report_msg]
-            
+
             # 从研究结果中直接获取最终报告
             elif "final_report" in partial_result and not report_active:
                 report_active = True
@@ -398,8 +393,7 @@ def run_gradio_demo():
         # Show research progress
         thinking_msg.content = "基于您的澄清搜索信息..."
 
-        log_msg.content += "\n\n### 开始研究\n**状态**: 需要进行搜索\n**深度**: " + str(
-            conversation_state.get("depth", 1)) + "\n**广度**: " + str(conversation_state.get("breadth", 1))
+        log_msg.content += "\n\n### 开始研究\n**状态**: 需要进行搜索\n"
         yield [thinking_msg, log_msg]
 
         # Track current report for streaming
@@ -409,13 +403,11 @@ def run_gradio_demo():
         # Perform the research with streaming
         async for partial_result in deep_research_stream(
                 query=refined_query,
-                depth=conversation_state.get("depth", 1),
-                breadth=conversation_state.get("breadth", 1),
                 user_clarifications=user_responses,
                 search_source=conversation_state.get("search_source", "serper"),
                 history_context=history_context
         ):
-            # 使用handle_research_progress处理研究进度和状态更新
+            # 处理研究进度和状态更新
             progress_update = await handle_research_progress(partial_result, thinking_msg, log_msg, conversation_state)
             if progress_update:
                 yield progress_update
@@ -429,11 +421,11 @@ def run_gradio_demo():
                         metadata={"title": "_研究报告_", "id": 2}
                     )
                     yield [thinking_msg, log_msg, report_msg]
-                
+
                 # 累积报告内容
                 report_msg.content += partial_result["final_report_chunk"]
                 yield [thinking_msg, log_msg, report_msg]
-            
+
             # 从研究结果中直接获取最终报告
             elif "final_report" in partial_result and not report_active:
                 report_active = True
@@ -505,22 +497,6 @@ def run_gradio_demo():
         title="🔍 Deep Research",
         description="""使用此工具进行深度研究，我将搜索互联网为您找到回答。Powered by <a href="https://github.com/shibing624/deep-research" target="_blank">Deep Research</a> Made with ❤️ by <a href="https://github.com/shibing624" target="_blank">shibing624</a>""",
         additional_inputs=[
-            gr.Slider(
-                minimum=1,
-                maximum=3,
-                value=1,
-                step=1,
-                label="研究深度",
-                info="更高 = 更深入但更慢"
-            ),
-            gr.Slider(
-                minimum=1,
-                maximum=3,
-                value=1,
-                step=1,
-                label="研究广度",
-                info="更高 = 更多来源但更慢"
-            ),
             gr.Dropdown(
                 choices=["tavily", "serper", "mp_search"],
                 value="tavily",
