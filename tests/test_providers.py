@@ -46,6 +46,5 @@ class TestProviders(unittest.TestCase):
         self.assertLess(len(result), len(prompt))
 
 
-
 if __name__ == '__main__':
     unittest.main()
