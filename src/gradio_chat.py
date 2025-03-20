@@ -4,7 +4,6 @@
 @description:
 
 A simplified Gradio demo for Deep Research with basic conversation interface.
-This version uses the latest Gradio features with ChatMessage for a modern UI.
 """
 
 import time
@@ -44,7 +43,7 @@ async def handle_research_progress(partial_result, thinking_msg, log_msg, conver
                 for i, step in enumerate(research_plan):
                     step_id = step.get("step_id", i + 1)
                     description = step.get("description", "")
-                    search_query = step.get("search_query", "")
+                    search_query = str(step.get("search_queries", []))
                     goal = step.get("goal", "")
                     plan_text += f"**步骤 {step_id}**: {description}\n- 查询: {search_query}\n- 目标: {goal}\n\n"
 
@@ -75,8 +74,6 @@ async def handle_research_progress(partial_result, thinking_msg, log_msg, conver
 
             # 添加阶段详细信息
             if stage == "insights_found" and partial_result.get("formatted_new_learnings"):
-                log_msg.content += "\n**新见解**:\n" + "\n".join(
-                    partial_result.get("formatted_new_learnings", []))
                 if partial_result.get("formatted_new_urls") and len(
                         partial_result.get("formatted_new_urls")) > 0:
                     log_msg.content += "\n\n**来源**:\n" + "\n".join(
@@ -122,19 +119,17 @@ def run_gradio_demo():
         "report_mode": True,  # 总是生成详细报告
         "show_details": True,  # 总是显示研究详情
         "last_status": "",  # 跟踪最后一个状态更新
-        "search_source": "qdrant",  # 默认搜索提供商
+        "search_source": config.get("research", {}).get("search_source", "tavily"),
         "history_chat": []
     }
 
-    async def research_with_thinking(message, history, search_source):
+    async def research_with_thinking(message, history):
         """Process the query with progressive thinking steps shown in the UI"""
         if not message:
             yield history
             return
-
-        logger.debug(f"Starting research, message: {message}, history: {history}, "
-                     f"search_source: {search_source}")
-        conversation_state["search_source"] = search_source
+        search_source = conversation_state.get("search_source", "tavily")
+        logger.debug(f"Starting research, message: {message}, history: {history}, search_source: {search_source}")
 
         # 重置最后状态
         conversation_state["last_status"] = ""
@@ -404,7 +399,7 @@ def run_gradio_demo():
         async for partial_result in deep_research_stream(
                 query=refined_query,
                 user_clarifications=user_responses,
-                search_source=conversation_state.get("search_source", "serper"),
+                search_source=conversation_state.get("search_source", "tavily"),
                 history_context=history_context
         ):
             # 处理研究进度和状态更新
@@ -499,7 +494,7 @@ def run_gradio_demo():
         additional_inputs=[
             gr.Dropdown(
                 choices=["tavily", "serper", "mp_search","qdrant"],
-                value="qdrant",
+                value="tavily",
                 label="搜索提供商",
                 info="要使用的搜索引擎"
             )

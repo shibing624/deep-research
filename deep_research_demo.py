@@ -34,18 +34,10 @@ async def run_demo():
 
         # 如果研究完成，获取最终报告
         if result.get("stage") == "completed":
-            learnings = result.get("learnings", [])
-            visited_urls = result.get("visitedUrls", [])
             final_report = result.get("final_report", "")
-
-            logger.info(f"研究完成! 发现 {len(learnings)} 条学习内容和 {len(visited_urls)} 个来源。")
-
-            # 保存结果到文件
             with open("report.md", "w", encoding="utf-8") as f:
                 f.write(final_report)
-
             logger.info("报告已保存到 report.md")
-
             print("\n" + "=" * 50)
             print(f"研究问题: {query}")
             print("=" * 50)

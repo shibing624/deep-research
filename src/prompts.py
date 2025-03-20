@@ -22,7 +22,7 @@ SHOULD_CLARIFY_QUERY_PROMPT = """
 查询是: ```{query}```
 
 请只回答 "yes" 或 "no"。如果查询已经足够清晰，请回答"no"。
-"""
+""" + f"当前日期是{now}。"
 
 # Prompt for generating follow-up questions
 FOLLOW_UP_QUESTIONS_PROMPT = """
@@ -170,10 +170,10 @@ Format your response as a valid JSON object with the following structure:
 
 Make each step logical and focused on a specific aspect of the research. Steps should build on each other, 
 and search queries should be specific and effective for web search.
-"""
+""" + f"当前日期是{now}。"
 
 # Prompt for extract search results
-EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT = "You are an expert in extracting relevant information."
+EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT = "You are an expert in extracting the most relevant and detailed information from search results."
 EXTRACT_SEARCH_RESULTS_PROMPT = """
 User query: ```{query}```
 
@@ -182,55 +182,33 @@ search result(Webpage Content):
 {search_results}
 ```
 
-You are an expert information extractor. Given the user's query, the search query that led to this page,
-and the webpage content, extract all pieces of information that are useful for answering the user's query.
-User's question is written in Chinese, 需要用中文输出.
+作为信息提取专家，请从网页内容中提取与用户查询最相关的核心片段。需要提取的内容要求：
+1. 包含具体的细节、数据、定义和重要论点，不要使用笼统的总结替代原始的详细内容
+2. 保留原文中的关键事实、数字、日期和引用
+3. 提取完整的相关段落，而不仅仅是简短的摘要
+4. 特别关注可以直接回答用户查询的内容
+5. 如果内容包含表格或列表中的重要信息，请完整保留这些结构化数据
 
 Output your response in the following JSON format:
 {{
-  "extracted_infos": [{{"info": "The extracted content1", "url": "url 1"}}, {{"info": "The extracted content 2", "url": "url 2"}}, ...]
+  "extracted_infos": [
+    {{
+      "info": "核心片段1，包含详细内容、数据和定义等",
+      "url": "url 1",
+      "relevance": "解释这段内容与查询的相关性"
+    }},
+    {{
+      "info": "核心片段2，包含详细内容、数据和定义等", 
+      "url": "url 2",
+      "relevance": "解释这段内容与查询的相关性"
+    }},
+    ...
+  ]
 }}
 
-- extracted_infos: The extract content from the webpage contains information that is useful for addressing the query.
-- info: The extracted relevant context as plain text.
-- url: The URL of the webpage where the information was found.
-"""
-
-# Prompt for determining next research steps
-RESEARCH_FROM_CONTENT_PROMPT = """
-Given the context of a search query and some content that was found based on that query, 
-determine what we should search next to further the research. The goal is to identify knowledge 
-gaps in the current findings, or to explore other related areas/questions that would provide 
-a more complete understanding of the topic.
-
-Query: ```{query}```
-
-Search Plan Step: 
-```
-{current_step}
-```
-
-Current Search Results:
-```
-{content}
-```
-
-What should we search for next? Reply with a JSON object containing the following:
-- "nextQueries": a list of up to {next_queries_count} search queries that would help continue the research.
-- "learnings": a list of key facts or insights we have learned from the content that help answer the original query, include cite url.
-
-For the next queries, make sure they:
-1. Address aspects of the topic that haven't been covered yet
-2. Dive deeper into promising subtopics or related areas
-3. Are specific enough to yield good search results
-4. Build upon what we've learned so far
-- User's question is written in Chinese, 需要用中文输出.
-
-Output your response in the following JSON format:
-{{
-  "nextQueries": ["query 1", "query 2", ...],
-  "learnings": [{{"insight": "learning 1", "url": "url 1"}}, {{"insight": "learning 2", "url": "url 2"}}, ...]
-}}
+- info: 保留原文格式的关键信息片段，包含详细内容而非简单摘要
+- url: 信息来源的网页URL
+- relevance: 简要说明这段内容如何回答了用户的查询
 """
 
 # Prompt for final research summary
@@ -255,7 +233,7 @@ Format your response as a valid JSON object with:
 }}
 """
 
-FINAL_REPORT_SYSTEM_PROMPT = f"""You are an expert researcher. Today is {now}. Follow these instructions when responding:
+FINAL_REPORT_SYSTEM_PROMPT = """You are an expert researcher. Follow these instructions when responding:
 - You may be asked to research subjects that is after your knowledge cutoff, assume the user is right when presented with news.
 - The user is a highly experienced analyst, no need to simplify it, be as detailed as possible and make sure your response is correct.
 - Be highly organized.
@@ -267,7 +245,7 @@ FINAL_REPORT_SYSTEM_PROMPT = f"""You are an expert researcher. Today is {now}. F
 - Value good arguments over authorities, the source is irrelevant.
 - Consider new technologies and contrarian ideas, not just the conventional wisdom.
 - User's question is written in Chinese, 需要用中文输出.
-"""
+""" + f"当前日期是{now}。"
 
 # Prompt for final report
 FINAL_REPORT_PROMPT = """
