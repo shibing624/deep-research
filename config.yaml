@@ -1,0 +1,39 @@
+# Deep Research Configuration
+
+# OpenAI settings
+openai:
+  api_key: "sk-tp2XzZTP6vW6NQ7h9Mo4NnCYGVxSo1C7B6Rq49AqBXt0afS1"  # Set your OpenAI API key here
+  base_url: "https://www.dmxapi.com/v1"
+  model: "gpt-4o-mini"  # Default model, can be "gpt-4o", "gpt-4o-mini"
+
+
+# Serper settings
+serper:
+  api_key: "xxx"  # Set your Serper API key here
+  base_url: "https://google.serper.dev/search"
+
+# Tavily settings
+tavily:
+  api_key: "tvly-dev-xxx"  # Use the token without 'Bearer' prefix
+  base_url: "https://api.tavily.com/search"
+  # Additional options that can be passed to Tavily API:
+  # search_depth: "advanced" # can be "basic" or "advanced"
+  # max_results: 5 # number of results to return (default is typically 5)
+
+qdrant:
+  engine_type: "qdrant"
+  qdrant_collection_name: "arxiv_llms"
+  qdrant_host: "192.168.1.5"
+  qdrant_port: 6333
+  embedding_model_path: "G:/pretrained_models/mteb/bge-m3"
+  device: "cuda"
+
+# Research settings
+research:
+  default_breadth: 1
+  default_depth: 1
+  concurrency_limit: 1
+  context_size: 128000
+  search_source: "qdrant"
+  max_results_per_query: 1
+  enable_summary: false

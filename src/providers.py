@@ -41,7 +41,7 @@ def get_model() -> Dict[str, Any]:
 def get_search_provider(search_source=None):
     """
     Get the appropriate search provider based on configuration.
-    
+
     Returns:
         An instance of the search provider class
     """
@@ -55,6 +55,9 @@ def get_search_provider(search_source=None):
     elif search_source == "tavily":
         from .tavily_client import TavilyClient
         return TavilyClient()
+    elif search_source == "qdrant":
+        from .qdrant_client import QdrantSearchClient
+        return QdrantSearchClient()
     else:  # Default to serper
         from .serper_client import SerperClient
         return SerperClient()

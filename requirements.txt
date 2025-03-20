@@ -3,3 +3,5 @@ openai
 httpx
 gradio==5.20.1
 pyyaml
+qdrant-client
+sentence-transformers

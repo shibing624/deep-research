@@ -122,7 +122,7 @@ def run_gradio_demo():
         "report_mode": True,  # 总是生成详细报告
         "show_details": True,  # 总是显示研究详情
         "last_status": "",  # 跟踪最后一个状态更新
-        "search_source": "tavily",  # 默认搜索提供商
+        "search_source": "qdrant",  # 默认搜索提供商
         "history_chat": []
     }
 
@@ -498,8 +498,8 @@ def run_gradio_demo():
         description="""使用此工具进行深度研究，我将搜索互联网为您找到回答。Powered by <a href="https://github.com/shibing624/deep-research" target="_blank">Deep Research</a> Made with ❤️ by <a href="https://github.com/shibing624" target="_blank">shibing624</a>""",
         additional_inputs=[
             gr.Dropdown(
-                choices=["tavily", "serper", "mp_search"],
-                value="tavily",
+                choices=["tavily", "serper", "mp_search","qdrant"],
+                value="qdrant",
                 label="搜索提供商",
                 info="要使用的搜索引擎"
             )
