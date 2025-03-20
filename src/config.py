@@ -27,7 +27,9 @@ DEFAULT_CONFIG = {
         "concurrency_limit": 1,
         "context_size": 128000,
         "search_source": "serper",
-        "max_results_per_query": 5
+        "max_results_per_query": 5,
+        "enable_refine_search_result": False,
+        "enable_next_plan": False
     }
 }
 

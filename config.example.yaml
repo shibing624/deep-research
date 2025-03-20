@@ -18,8 +18,9 @@ tavily:
 
 # Research settings
 research:
-  concurrency_limit: 1
+  concurrency_limit: 3
   context_size: 128000
-  search_source: "serper"
-  max_results_per_query: 1
-  enable_summary: false
+  search_source: "tavily"
+  max_results_per_query: 3
+  enable_refine_search_result: true
+  enable_next_plan: false

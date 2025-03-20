@@ -22,9 +22,8 @@ from .prompts import (
     PROCESS_NO_CLARIFICATIONS_PROMPT,
     PROCESS_CLARIFICATIONS_PROMPT,
     RESEARCH_PLAN_PROMPT,
-EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT,
+    EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT,
     EXTRACT_SEARCH_RESULTS_PROMPT,
-    RESEARCH_FROM_CONTENT_PROMPT,
     RESEARCH_SUMMARY_PROMPT,
     FINAL_REPORT_SYSTEM_PROMPT,
     FINAL_REPORT_PROMPT,
@@ -235,7 +234,7 @@ async def extract_search_results(query: str, search_results: str) -> str:
         search_results: Formatted search results text
 
     Returns:
-        extracted search results
+        extracted search results with detailed content and relevance information
     """
     try:
         # Format the prompt
@@ -244,8 +243,21 @@ async def extract_search_results(query: str, search_results: str) -> str:
             search_results=search_results
         )
 
-        # Generate the extracted_contents_str
-        extracted_contents = await generate_json_completion(prompt, system_message=EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT,temperature=0)
+        # Generate the extracted_contents
+        extracted_contents = await generate_json_completion(
+            prompt=prompt, 
+            system_message=EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT,
+            temperature=0
+        )
+        
+        # Process and enrich the extracted content
+        if "extracted_infos" in extracted_contents:
+            # Make sure all entries have a relevance field (for backward compatibility)
+            for info in extracted_contents["extracted_infos"]:
+                if "relevance" not in info:
+                    info["relevance"] = "与查询相关的信息"
+        
+        # Convert to string for storage and transfer
         extracted_contents_str = json.dumps(extracted_contents, ensure_ascii=False)
         return extracted_contents_str
 
@@ -254,7 +266,7 @@ async def extract_search_results(query: str, search_results: str) -> str:
         return f"Error extract results for '{query}': {str(e)}"
 
 
-async def write_final_report_stream(query: str, context: list,
+async def write_final_report_stream(query: str, context: str,
                                     history_context: str = '') -> AsyncGenerator[str, None]:
     """
     Streaming version of write_final_report that yields chunks of the report.
@@ -276,37 +288,6 @@ async def write_final_report_stream(query: str, context: list,
     response_generator = await generate_completion(
         prompt=formatted_prompt,
         system_message="You are an expert researcher providing detailed, well-structured reports in Chinese.",
-        temperature=0.7,
-        stream=True
-    )
-
-    # Stream the response chunks
-    async for chunk in response_generator:
-        yield chunk
-
-
-async def future_research(query: str, context: str,
-                                    history_context: str = '') -> AsyncGenerator[str, None]:
-    """
-    Streaming version of write_final_answer that yields chunks of the answer.
-
-    Args:
-        query: The original research query
-        context: List of key learnings/facts discovered with their sources
-        history_context: str
-
-    Yields:
-        Chunks of the final answer
-    """
-    formatted_prompt = FINAL_ANSWER_PROMPT.format(
-        query=query,
-        context=context,
-        history_context=history_context
-    )
-
-    response_generator = await generate_completion(
-        prompt=formatted_prompt,
-        system_message="You are an expert researcher providing concise answers based on research findings in Chinese.",
         temperature=0.7,
         stream=True
     )
@@ -471,8 +452,8 @@ async def research_step(
     search_results_text = search_result["summary"]
     urls = search_result["urls"]
 
-    enable_summary = config.get("research", {}).get("enable_summary", True)
-    if enable_summary:
+    enable_refine_search_result = config.get("research", {}).get("enable_refine_search_result", False)
+    if enable_refine_search_result:
         extracted_content = await extract_search_results(query, search_results_text)
     else:
         extracted_content = search_results_text
@@ -510,7 +491,6 @@ async def deep_research_stream(
     # Initialize tracking variables
     visited_urls = []
     all_learnings = []
-    all_search_contents = []
 
     # Initialize search provider
     search_provider = get_search_provider(search_source=search_source)
@@ -699,7 +679,6 @@ async def deep_research_stream(
             # Create a queue of queries to process for this step
             step_urls = []
             step_learnings = []
-            search_contents = []
 
             current_queries = search_queries.copy()
             # Research these queries concurrently
@@ -731,13 +710,12 @@ async def deep_research_stream(
             results = await asyncio.gather(*research_tasks)
 
             # Process the results
-            new_urls = []
             for result in results:
                 # Update tracking variables
-                step_urls.extend(result["urls"])
-                new_urls.extend(result["urls"])
-                search_contents.append(result["extracted_content"])
-                step_learnings.append(result["extracted_content"])
+                urls = result["urls"]
+                content = result["extracted_content"]
+                step_urls.extend(urls)
+                step_learnings.append(content)
 
             # Format learnings and URLs for display
             formatted_learnings = []
@@ -745,9 +723,10 @@ async def deep_research_stream(
                 formatted_learnings.append(f"[{i + 1}] {learning}")
 
             formatted_urls = []
-            for i, url in enumerate(new_urls):
+            for i, url in enumerate(step_urls):
                 formatted_urls.append(f"[{i + 1}] {url}")
 
+            # Truncate longer learnings for display
             new_learnings = [str(i)[:400] for i in step_learnings]
             yield {
                 "status_update": f"步骤 {step_id}/{len(steps)}: 发现 {len(new_learnings)} 个新见解",
@@ -755,7 +734,7 @@ async def deep_research_stream(
                 "visitedUrls": visited_urls + step_urls,
                 "new_learnings": new_learnings,
                 "formatted_new_learnings": formatted_learnings,
-                "new_urls": new_urls,
+                "new_urls": step_urls,
                 "formatted_new_urls": formatted_urls,
                 "progress": {
                     "current_step": step_id,
@@ -768,7 +747,6 @@ async def deep_research_stream(
             # Update visited URLs and learnings
             visited_urls.extend(step_urls)
             all_learnings.extend(step_learnings)
-            all_search_contents.extend(search_contents)
 
             # Save step summary
             step_summaries.append({
@@ -799,8 +777,8 @@ async def deep_research_stream(
                 "stage": "step_completed"
             }
 
-        enable_summary = config.get("research", {}).get("enable_summary", True)
-        if enable_summary:
+        enable_next_plan = config.get("research", {}).get("enable_next_plan", False)
+        if enable_next_plan:
             # Perform final analysis
             yield {
                 "status_update": "分析所有已收集的信息...",
@@ -844,7 +822,7 @@ async def deep_research_stream(
             }
         else:
             future_research_result = ""
-            all_learnings = all_search_contents
+            # No need to modify all_learnings when skipping summary
 
         yield {
             "status_update": "生成详细研究报告...",

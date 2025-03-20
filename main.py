@@ -1,8 +1,12 @@
-#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@author:XuMing(xuming624@qq.com)
+@description:
+"""
 import argparse
 import asyncio
 from src.config import load_config, get_config
-from src.deep_research import write_final_report_sync, write_final_answer_sync, deep_research_stream
+from src.deep_research import deep_research_stream
 from loguru import logger
 
 
@@ -15,11 +19,9 @@ async def run_research(args):
 
     # 定义进度回调函数
     def progress_callback(progress):
-        completed = progress.get("completedQueries", 0)
-        total = progress.get("totalQueries", 0)
         current = progress.get("currentQuery", "")
 
-        logger.info(f"进度: 查询 {completed}/{total} - 当前: {current}")
+        logger.info(f"进度: 当前查询: {current}")
 
     # 运行研究
     logger.info(f"开始研究: {query}")
