@@ -506,6 +506,14 @@ def run_gradio_demo():
         fn=research_with_thinking,
         title="🔍 Deep Research",
         description="""使用此工具进行深度研究，我将搜索互联网为您找到回答。Powered by <a href="https://github.com/shibing624/deep-research" target="_blank">Deep Research</a> Made with ❤️ by <a href="https://github.com/shibing624" target="_blank">shibing624</a>""",
+        additional_inputs=[
+            gr.Dropdown(
+                choices=["tavily", "serper", "mp_search","qdrant"],
+                value="tavily",
+                label="搜索提供商",
+                info="要使用的搜索引擎"
+            )
+        ],
         examples=[
             ["特斯拉股票的最新行情?"],
             ["How does climate change affect biodiversity?"],
