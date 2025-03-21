@@ -4,7 +4,13 @@
 openai:
   api_key: "sk-xxx"  # Set your OpenAI API key here
   base_url: "https://api.openai.com/v1"
-  model: "o3-mini"  # Default model, can be "gpt-4o", "gpt-4o-mini"
+  model: "gpt-4o-mini"  # Default model, can be "gpt-4o", "gpt-4o-mini"
+
+# Report LLM settings
+report_llm:
+  api_key: "sk-xxx"  # Set your OpenAI API key here
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4o"
 
 # Serper settings
 serper:

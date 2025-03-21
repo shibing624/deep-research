@@ -58,12 +58,12 @@ def limit_context_size(text: str, max_size: int) -> str:
     # On average, 1 token is roughly 4 characters for English text
     # For Chinese, the ratio is 2
     char_limit = max_size * 2
-    
+
     if len(text) <= char_limit:
         return text
-    
+
     logger.warning(f"Truncating context from {len(text)} chars to ~{char_limit} chars")
-    
+
     # For JSON strings, try to preserve structure
     if text.startswith('{') and text.endswith('}'):
         try:
@@ -88,9 +88,9 @@ def limit_context_size(text: str, max_size: int) -> str:
         except:
             # Not valid JSON, use simple truncation
             pass
-    
+
     # Simple truncation with indicator
-    return text[:char_limit-50] + "... [content truncated due to token limit]"
+    return text[:char_limit - 50] + "... [content truncated due to token limit]"
 
 
 async def should_clarify_query(query: str, history_context: str = '') -> bool:
@@ -290,10 +290,10 @@ async def extract_search_results(query: str, search_results: str) -> str:
         # Get context size limit from config
         config = get_config()
         context_size = config.get("research", {}).get("context_size", 128000)
-        
+
         # Limit search results size
         limited_search_results = limit_context_size(search_results, context_size // 2)
-        
+
         # Format the prompt
         prompt = EXTRACT_SEARCH_RESULTS_PROMPT.format(
             query=query,
@@ -302,18 +302,18 @@ async def extract_search_results(query: str, search_results: str) -> str:
 
         # Generate the extracted_contents
         extracted_contents = await generate_json_completion(
-            prompt=prompt, 
+            prompt=prompt,
             system_message=EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT,
             temperature=0
         )
-        
+
         # Process and enrich the extracted content
         if "extracted_infos" in extracted_contents:
             # Make sure all entries have a relevance field (for backward compatibility)
             for info in extracted_contents["extracted_infos"]:
                 if "relevance" not in info:
                     info["relevance"] = "与查询相关的信息"
-        
+
         # Convert to string for storage and transfer
         extracted_contents_str = json.dumps(extracted_contents, ensure_ascii=False)
         return extracted_contents_str
@@ -339,11 +339,11 @@ async def write_final_report_stream(query: str, context: str,
     # Get context size limit from config
     config = get_config()
     context_size = config.get("research", {}).get("context_size", 128000)
-    
+
     # Limit context sizes
     limited_context = limit_context_size(context, context_size // 2)
     limited_history = limit_context_size(history_context, context_size // 4)
-    
+
     formatted_prompt = FINAL_REPORT_PROMPT.format(
         query=query,
         context=limited_context,
@@ -354,7 +354,8 @@ async def write_final_report_stream(query: str, context: str,
         prompt=formatted_prompt,
         system_message="You are an expert researcher providing detailed, well-structured reports in Chinese.",
         temperature=0.7,
-        stream=True
+        stream=True,
+        is_report=True
     )
 
     # Stream the response chunks
@@ -377,7 +378,7 @@ async def write_final_report(query: str, context: str, history_context: str = ''
     # Get context size limit from config
     config = get_config()
     context_size = config.get("research", {}).get("context_size", 128000)
-    
+
     # Limit context sizes
     limited_context = limit_context_size(context, context_size // 2)
     limited_history = limit_context_size(history_context, context_size // 4)
@@ -391,7 +392,8 @@ async def write_final_report(query: str, context: str, history_context: str = ''
     report = await generate_completion(
         prompt=formatted_prompt,
         system_message=FINAL_REPORT_SYSTEM_PROMPT,
-        temperature=0.7
+        temperature=0.7,
+        is_report=True
     )
 
     return report
@@ -412,11 +414,11 @@ async def write_final_answer(query: str, context: str, history_context: str = ''
     # Get context size limit from config
     config = get_config()
     context_size = config.get("research", {}).get("context_size", 128000)
-    
+
     # Limit context sizes
     limited_context = limit_context_size(context, context_size // 2)
     limited_history = limit_context_size(history_context, context_size // 4)
-    
+
     formatted_prompt = FINAL_ANSWER_PROMPT.format(
         query=query,
         context=limited_context,
@@ -426,7 +428,8 @@ async def write_final_answer(query: str, context: str, history_context: str = ''
     answer = await generate_completion(
         prompt=formatted_prompt,
         system_message=FINAL_REPORT_SYSTEM_PROMPT,
-        temperature=0.7
+        temperature=0.7,
+        is_report=True
     )
 
     return answer

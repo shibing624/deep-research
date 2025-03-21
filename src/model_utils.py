@@ -18,7 +18,8 @@ async def generate_completion(
         system_message: str = "You are a helpful AI research assistant.",
         temperature: float = 0.7,
         json_response: bool = False,
-        stream: bool = False
+        stream: bool = False,
+        is_report: bool = False
 ) -> Union[str, AsyncGenerator[str, None]]:
     """
     Generate a completion from the language model.
@@ -29,11 +30,12 @@ async def generate_completion(
         temperature: The temperature to use for generation
         json_response: Whether to request a JSON response
         stream: Whether to stream the response
+        is_report: Whether to use the report model configuration
         
     Returns:
         The model's response as a string or an async generator of response chunks
     """
-    model_config = get_model()
+    model_config = get_model(is_report=is_report)
 
     messages = [
         {"role": "system", "content": system_message},

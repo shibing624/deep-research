@@ -8,20 +8,26 @@ import openai
 from .config import get_config
 
 
-def get_model() -> Dict[str, Any]:
+def get_model(is_report: bool = False) -> Dict[str, Any]:
     """
     Get model configuration including client and model name.
+
+    :param is_report: Whether to get the model configuration for a report
     
     Returns:
         Dict containing model configuration
     """
     config = get_config()
-
-    # Get OpenAI configuration from config
-    openai_config = config.get("openai", {})
-    api_key = openai_config.get("api_key", "")
-    model = openai_config.get("model", "gpt-4o")
-    base_url = openai_config.get("base_url", None)
+    if is_report:
+        report_config = config.get("report_llm", {})
+        api_key = report_config.get("api_key", "")
+        model = report_config.get("model", "gpt-4o")
+        base_url = report_config.get("base_url", None)
+    else:
+        openai_config = config.get("openai", {})
+        api_key = openai_config.get("api_key", "")
+        model = openai_config.get("model", "gpt-4o-mini")
+        base_url = openai_config.get("base_url", None)
 
     # Initialize OpenAI client
     client_args = {"api_key": api_key}
