@@ -109,6 +109,10 @@ config = get_config()
 def run_gradio_demo():
     """Run a modern Gradio demo for Deep Research using ChatMessage"""
 
+    # Get configuration for skip_clarification
+    skip_clarification = config.get("research", {}).get("skip_clarification", False)
+    search_source = config.get("research", {}).get("search_source", "tavily")
+    
     # Conversation state (shared across functions)
     conversation_state = {
         "current_query": "",
@@ -119,7 +123,8 @@ def run_gradio_demo():
         "report_mode": True,  # 总是生成详细报告
         "show_details": True,  # 总是显示研究详情
         "last_status": "",  # 跟踪最后一个状态更新
-        "search_source": config.get("research", {}).get("search_source", "tavily"),
+        "search_source": search_source,  # 搜索提供商
+        "skip_clarification": skip_clarification,  # 新增跳过澄清配置
         "history_chat": []
     }
 
@@ -129,7 +134,8 @@ def run_gradio_demo():
             yield history
             return
         search_source = conversation_state.get("search_source", "tavily")
-        logger.debug(f"Starting research, message: {message}, history: {history}, search_source: {search_source}")
+        skip_clarification = conversation_state.get("skip_clarification", False)
+        logger.debug(f"Starting research, message: {message}, history: {history}, search_source: {search_source}, skip_clarification: {skip_clarification}")
 
         # 重置最后状态
         conversation_state["last_status"] = ""
@@ -163,54 +169,62 @@ def run_gradio_demo():
         )
         yield [thinking_msg, log_msg]
 
-        # 在Gradio界面中告知用户我们正在分析查询
-        thinking_msg.content = "分析查询需求中..."
-        log_msg.content += "\n\n### 查询处理\n**操作**: 分析查询是否需要澄清\n"
-        yield [thinking_msg, log_msg]
-
-        # 需要在Gradio界面中检查是否需要澄清
-        needs_clarification = await should_clarify_query(message, history_context)
-        if needs_clarification:
-            # 需要澄清，生成问题并等待用户回答
-            thinking_msg.content = "生成澄清问题..."
-            log_msg.content += "\n\n### 查询分析\n**结果**: 需要澄清\n"
+        # 检查是否需要跳过澄清环节
+        if skip_clarification:
+            thinking_msg.content = "跳过澄清环节，直接开始研究..."
+            log_msg.content += "\n\n### 查询处理\n**操作**: 根据配置跳过澄清环节\n"
             yield [thinking_msg, log_msg]
-
-            followup_result = await generate_followup_questions(message, history_context)
-            questions = followup_result.get("questions", [])
-
-            if questions:
-                # 保存问题和状态
-                conversation_state["current_query"] = message
-                conversation_state["questions"] = questions
-                conversation_state["waiting_for_clarification"] = True
-
-                # 显示问题给用户
-                thinking_msg.content = "请回答以下问题，帮助我更好地理解您的查询:"
-                for i, q in enumerate(questions, 1):
-                    thinking_msg.content += f"\n{i}. {q.get('question', '')}"
-                thinking_msg.metadata["status"] = "pending"
-
-                log_msg.content += f"\n\n### 等待用户澄清\n**问题数**: {len(questions)}\n**问题**:\n"
-                for i, q in enumerate(questions, 1):
-                    log_msg.content += f"{i}. {q.get('question', '')}\n"
-
-                yield [thinking_msg, log_msg]
-                return  # 等待用户回答
-            else:
-                # 虽然需要澄清，但没有生成有效问题，继续研究
-                thinking_msg.content = "无法生成有效的澄清问题，继续研究..."
-                log_msg.content += "\n\n### 查询分析\n**结果**: 需要澄清但无有效问题\n"
-                yield [thinking_msg, log_msg]
         else:
-            # 不需要澄清，直接继续
-            thinking_msg.content = "查询已足够清晰，开始研究..."
-            log_msg.content += "\n\n### 查询分析\n**结果**: 查询清晰，无需澄清\n"
+            # 在Gradio界面中告知用户我们正在分析查询
+            thinking_msg.content = "分析查询需求中..."
+            log_msg.content += "\n\n### 查询处理\n**操作**: 分析查询是否需要澄清\n"
             yield [thinking_msg, log_msg]
+
+            # 需要在Gradio界面中检查是否需要澄清
+            needs_clarification = await should_clarify_query(message, history_context)
+            if needs_clarification:
+                # 需要澄清，生成问题并等待用户回答
+                thinking_msg.content = "生成澄清问题..."
+                log_msg.content += "\n\n### 查询分析\n**结果**: 需要澄清\n"
+                yield [thinking_msg, log_msg]
+
+                followup_result = await generate_followup_questions(message, history_context)
+                questions = followup_result.get("questions", [])
+
+                if questions:
+                    # 保存问题和状态
+                    conversation_state["current_query"] = message
+                    conversation_state["questions"] = questions
+                    conversation_state["waiting_for_clarification"] = True
+
+                    # 显示问题给用户
+                    thinking_msg.content = "请回答以下问题，帮助我更好地理解您的查询:"
+                    for i, q in enumerate(questions, 1):
+                        thinking_msg.content += f"\n{i}. {q.get('question', '')}"
+                    thinking_msg.metadata["status"] = "pending"
+
+                    log_msg.content += f"\n\n### 等待用户澄清\n**问题数**: {len(questions)}\n**问题**:\n"
+                    for i, q in enumerate(questions, 1):
+                        log_msg.content += f"{i}. {q.get('question', '')}\n"
+
+                    yield [thinking_msg, log_msg]
+                    return  # 等待用户回答
+                else:
+                    # 虽然需要澄清，但没有生成有效问题，继续研究
+                    thinking_msg.content = "无法生成有效的澄清问题，继续研究..."
+                    log_msg.content += "\n\n### 查询分析\n**结果**: 需要澄清但无有效问题\n"
+                    yield [thinking_msg, log_msg]
+            else:
+                # 不需要澄清，直接继续
+                thinking_msg.content = "查询已足够清晰，开始研究..."
+                log_msg.content += "\n\n### 查询分析\n**结果**: 查询清晰，无需澄清\n"
+                yield [thinking_msg, log_msg]
 
         # 展示研究配置
         thinking_msg.content = "搜索相关信息中..."
         log_msg.content += f"\n\n### 研究配置\n**搜索提供商**: {search_source}\n"
+        if skip_clarification:
+            log_msg.content += "**澄清环节**: 已跳过（根据配置）\n"
         yield [thinking_msg, log_msg]
 
         # Track current plan and report for streaming
@@ -220,7 +234,8 @@ def run_gradio_demo():
         async for partial_result in deep_research_stream(
                 query=message,
                 search_source=search_source,
-                history_context=history_context
+                history_context=history_context,
+                skip_clarification=skip_clarification  # 传递跳过澄清的配置
         ):
             # 处理研究进度和状态更新
             progress_update = await handle_research_progress(partial_result, thinking_msg, log_msg, conversation_state)

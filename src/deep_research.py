@@ -43,6 +43,56 @@ def add_event_loop_policy():
             print(f"Error setting event loop policy: {e}")
 
 
+def limit_context_size(text: str, max_size: int) -> str:
+    """
+    Limit the context size to prevent LLM token limit errors.
+    
+    Args:
+        text: Text to limit
+        max_size: Approximate maximum character count (rough estimate for tokens)
+        
+    Returns:
+        Limited text
+    """
+    # Simple character-based truncation (rough approximation)
+    # On average, 1 token is roughly 4 characters for English text
+    # For Chinese, the ratio is 2
+    char_limit = max_size * 2
+    
+    if len(text) <= char_limit:
+        return text
+    
+    logger.warning(f"Truncating context from {len(text)} chars to ~{char_limit} chars")
+    
+    # For JSON strings, try to preserve structure
+    if text.startswith('{') and text.endswith('}'):
+        try:
+            # Try to parse as JSON
+            data = json.loads(text)
+            # If it's a list of items, truncate the list
+            if isinstance(data, list):
+                # Calculate approx chars per item
+                if len(data) > 0:
+                    chars_per_item = len(text) / len(data)
+                    items_to_keep = int(char_limit / chars_per_item)
+                    items_to_keep = max(1, min(items_to_keep, len(data)))
+                    return json.dumps(data[:items_to_keep], ensure_ascii=False)
+            # If it contains a list property, truncate that
+            for key, value in data.items():
+                if isinstance(value, list) and len(value) > 0:
+                    chars_per_item = len(json.dumps(value, ensure_ascii=False)) / len(value)
+                    items_to_keep = int(char_limit / 2 / chars_per_item)  # Use half for lists
+                    items_to_keep = max(1, min(items_to_keep, len(value)))
+                    data[key] = value[:items_to_keep]
+            return json.dumps(data, ensure_ascii=False)
+        except:
+            # Not valid JSON, use simple truncation
+            pass
+    
+    # Simple truncation with indicator
+    return text[:char_limit-50] + "... [content truncated due to token limit]"
+
+
 async def should_clarify_query(query: str, history_context: str = '') -> bool:
     """
     Use the language model to determine if a query needs clarification.
@@ -237,10 +287,17 @@ async def extract_search_results(query: str, search_results: str) -> str:
         extracted search results with detailed content and relevance information
     """
     try:
+        # Get context size limit from config
+        config = get_config()
+        context_size = config.get("research", {}).get("context_size", 128000)
+        
+        # Limit search results size
+        limited_search_results = limit_context_size(search_results, context_size // 2)
+        
         # Format the prompt
         prompt = EXTRACT_SEARCH_RESULTS_PROMPT.format(
             query=query,
-            search_results=search_results
+            search_results=limited_search_results
         )
 
         # Generate the extracted_contents
@@ -279,10 +336,18 @@ async def write_final_report_stream(query: str, context: str,
     Yields:
         Chunks of the final report
     """
+    # Get context size limit from config
+    config = get_config()
+    context_size = config.get("research", {}).get("context_size", 128000)
+    
+    # Limit context sizes
+    limited_context = limit_context_size(context, context_size // 2)
+    limited_history = limit_context_size(history_context, context_size // 4)
+    
     formatted_prompt = FINAL_REPORT_PROMPT.format(
         query=query,
-        context=context,
-        history_context=history_context
+        context=limited_context,
+        history_context=limited_history
     )
 
     response_generator = await generate_completion(
@@ -309,11 +374,18 @@ async def write_final_report(query: str, context: str, history_context: str = ''
     Returns:
         A formatted research report
     """
+    # Get context size limit from config
+    config = get_config()
+    context_size = config.get("research", {}).get("context_size", 128000)
+    
+    # Limit context sizes
+    limited_context = limit_context_size(context, context_size // 2)
+    limited_history = limit_context_size(history_context, context_size // 4)
 
     formatted_prompt = FINAL_REPORT_PROMPT.format(
         query=query,
-        context=context,
-        history_context=history_context
+        context=limited_context,
+        history_context=limited_history
     )
 
     report = await generate_completion(
@@ -337,10 +409,18 @@ async def write_final_answer(query: str, context: str, history_context: str = ''
     Returns:
         A concise answer to the query
     """
+    # Get context size limit from config
+    config = get_config()
+    context_size = config.get("research", {}).get("context_size", 128000)
+    
+    # Limit context sizes
+    limited_context = limit_context_size(context, context_size // 2)
+    limited_history = limit_context_size(history_context, context_size // 4)
+    
     formatted_prompt = FINAL_ANSWER_PROMPT.format(
         query=query,
-        context=context,
-        history_context=history_context
+        context=limited_context,
+        history_context=limited_history
     )
 
     answer = await generate_completion(
@@ -470,6 +550,7 @@ async def deep_research_stream(
         user_clarifications: Dict[str, str] = None,
         search_source: Optional[str] = None,
         history_context: Optional[str] = None,
+        skip_clarification: bool = False,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Streaming version of deep research that yields partial results.
@@ -480,6 +561,7 @@ async def deep_research_stream(
         user_clarifications: User responses to clarification questions
         search_source: Optional search provider to use
         history_context: history chat content
+        skip_clarification: Whether to skip the clarification step
 
     Yields:
         Dict with partial research results and status updates
@@ -508,8 +590,8 @@ async def deep_research_stream(
         # Step 1.5: 先判断是否需要生成澄清问题
         needs_clarification = False
 
-        # 如果没有提供用户澄清，则判断是否需要澄清
-        if not user_clarifications:
+        # 如果没有提供用户澄清，且不跳过澄清环节，则判断是否需要澄清
+        if not user_clarifications and not skip_clarification:
             yield {
                 "status_update": f"分析查询是否需要澄清...",
                 "learnings": all_learnings,
@@ -535,10 +617,19 @@ async def deep_research_stream(
                     "current_query": query,
                     "stage": "clarification_skipped"
                 }
+        elif skip_clarification:
+            # 如果配置为跳过澄清环节，直接显示状态
+            yield {
+                "status_update": f"配置为跳过澄清环节，直接开始研究",
+                "learnings": all_learnings,
+                "visitedUrls": visited_urls,
+                "current_query": query,
+                "stage": "clarification_skipped"
+            }
 
-        # 如果LLM判断需要澄清，或者已经有用户澄清，则继续生成或处理澄清问题
+        # 如果LLM判断需要澄清，或者已经有用户澄清，且未配置跳过澄清环节，则继续生成或处理澄清问题
         questions = []
-        if needs_clarification or user_clarifications:
+        if (needs_clarification or user_clarifications) and not skip_clarification:
             # Step 2: Generate clarification questions if needed
             if needs_clarification:
                 yield {
@@ -580,7 +671,7 @@ async def deep_research_stream(
         refined_query = query
         user_responses = user_clarifications or {}
 
-        if questions and user_clarifications:
+        if questions and user_clarifications and not skip_clarification:
             # Track which questions were answered vs. which use defaults
             answered_questions = []
             unanswered_questions = []

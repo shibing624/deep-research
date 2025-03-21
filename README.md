@@ -19,13 +19,15 @@
 
 ## Features
 
-- **多步深度搜索**：支持可配置的深度（迭代次数）和广度（搜索查询量）
+- **深度搜索**：智能生成检索计划并按计划执行并行检索
 - **智能查询生成**：基于初始问题和已获取的信息自动生成后续查询
 - **多种输出格式**：支持简洁回答和详细报告两种输出模式
 - **多语言支持**：完全支持中文输入和输出
+- **自动上下文管理**：智能控制传递给LLM的上下文长度，防止token限制错误
+- **可配置澄清流程**：可选择跳过澄清环节，直接进行研究
 - **多种使用方式**：
   - 命令行界面
-  - Gradio 网页界面（支持流式输出）
+  - Gradio 网页界面（支持流式输出CoT）
   - Python 模块直接调用
 
 ## Setup
@@ -52,6 +54,17 @@ The configuration file allows you to set:
 - API keys for OpenAI, Tavily, and Serper
 - Model preferences
 - Search engine options (Serper, MP Search, and Tavily)
+
+
+### Key Configuration Options
+
+- **context_size**: Controls the maximum size of context sent to the LLM. The system will automatically truncate longer contexts to prevent token limit errors while preserving as much relevant information as possible. Default is `128000`.
+
+- **skip_clarification**: When set to `True`, the system will skip the clarification step and proceed directly with research. This is useful for straightforward queries where clarification might be unnecessary. Default is `False`.
+
+- **search_source**: Choose your preferred search provider. Default is `tavily`.
+
+- **enable_refine_search_result**: When enabled, the system will refine search results for better relevance. Default is `False`.
 
 ## Search Engines
 
@@ -104,7 +117,7 @@ python main.py --config my-config.yaml research "Your query"
 
 ### Demo Script
 
-Run演示脚本，查看完整的研究流程：
+运行演示脚本，查看完整的研究流程：
 
 ```bash
 python deep_research_demo.py
@@ -142,7 +155,8 @@ async def run_research():
     async for result in deep_research_stream(
         query="特斯拉股票走势分析",
         user_clarifications={'all': 'skip'},
-        history_context=""
+        history_context="",
+        skip_clarification=True  # Skip clarification step
     ):
         # 如果研究完成，保存报告
         if result.get("stage") == "completed":
