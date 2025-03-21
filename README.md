@@ -30,6 +30,9 @@
   - Gradio 网页界面（支持流式输出CoT）
   - Python 模块直接调用
 
+## Demo
+- Official demo: https://deepresearch.mulanai.com
+
 ## Setup
 
 1. Clone the repository: 
