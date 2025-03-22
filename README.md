@@ -63,7 +63,7 @@ The configuration file allows you to set:
 
 - **context_size**: Controls the maximum size of context sent to the LLM. The system will automatically truncate longer contexts to prevent token limit errors while preserving as much relevant information as possible. Default is `128000`.
 
-- **skip_clarification**: When set to `True`, the system will skip the clarification step and proceed directly with research. This is useful for straightforward queries where clarification might be unnecessary. Default is `False`.
+- **enable_clarification**: When set to `False`, the system will skip the clarification step and proceed directly with research. This is useful for straightforward queries where clarification might be unnecessary. Default is `False`.
 
 - **search_source**: Choose your preferred search provider. Default is `tavily`.
 
@@ -157,9 +157,7 @@ async def run_research():
     # 运行研究
     async for result in deep_research_stream(
         query="特斯拉股票走势分析",
-        user_clarifications={'all': 'skip'},
         history_context="",
-        skip_clarification=True  # Skip clarification step
     ):
         # 如果研究完成，保存报告
         if result.get("stage") == "completed":

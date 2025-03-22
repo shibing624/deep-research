@@ -584,7 +584,7 @@ async def deep_research_stream(
         user_clarifications: Dict[str, str] = None,
         search_source: Optional[str] = None,
         history_context: Optional[str] = None,
-        skip_clarification: bool = False,
+        enable_clarification: bool = False,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Streaming version of deep research that yields partial results.
@@ -595,7 +595,7 @@ async def deep_research_stream(
         user_clarifications: User responses to clarification questions
         search_source: Optional search provider to use
         history_context: history chat content
-        skip_clarification: Whether to skip the clarification step
+        enable_clarification: Whether to use the clarification step
 
     Yields:
         Dict with partial research results and status updates
@@ -625,7 +625,7 @@ async def deep_research_stream(
         needs_clarification = False
 
         # 如果没有提供用户澄清，且不跳过澄清环节，则判断是否需要澄清
-        if not user_clarifications and not skip_clarification:
+        if not user_clarifications and enable_clarification:
             yield {
                 "status_update": f"分析查询是否需要澄清...",
                 "learnings": all_learnings,
@@ -651,7 +651,7 @@ async def deep_research_stream(
                     "current_query": query,
                     "stage": "clarification_skipped"
                 }
-        elif skip_clarification:
+        elif not enable_clarification:
             # 如果配置为跳过澄清环节，直接显示状态
             yield {
                 "status_update": f"配置为跳过澄清环节，直接开始研究",
@@ -663,7 +663,7 @@ async def deep_research_stream(
 
         # 如果LLM判断需要澄清，或者已经有用户澄清，且未配置跳过澄清环节，则继续生成或处理澄清问题
         questions = []
-        if (needs_clarification or user_clarifications) and not skip_clarification:
+        if (needs_clarification or user_clarifications) and enable_clarification:
             # Step 2: Generate clarification questions if needed
             if needs_clarification:
                 yield {
@@ -705,7 +705,7 @@ async def deep_research_stream(
         refined_query = query
         user_responses = user_clarifications or {}
 
-        if questions and user_clarifications and not skip_clarification:
+        if questions and user_clarifications and enable_clarification:
             # Track which questions were answered vs. which use defaults
             answered_questions = []
             unanswered_questions = []

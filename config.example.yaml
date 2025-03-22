@@ -25,9 +25,9 @@ tavily:
 # Research settings
 research:
   concurrency_limit: 3 # 并发搜索数量
-  context_size: 128000 # 传入LLM的最大文本长度（token数）
+  context_size: 64000 # 传入LLM的最大文本长度（token数）
   search_source: "tavily" # 搜索引擎
   max_results_per_query: 3 # 每个搜索结果的最大数量
-  enable_refine_search_result: True # 是否需要精简搜索结果，如果为True，将会对搜索结果提取关键片段
-  enable_next_plan: False # 是否需要下一步计划，如果为True，将会总结搜索结果并提供下一步计划，为生成报告提供参考
-  skip_clarification: True # 是否需要跳过澄清，如果为True，将会跳过澄清环节，直接进行搜索
+  enable_refine_search_result: False # 是否需要精简搜索结果，如果为True，将会对搜索结果提取关键片段；如果是False，直接用搜索结果原文
+  enable_next_plan: False # 是否需要下一步计划，如果为True，将会总结搜索结果并提供下一步计划，为生成报告提供参考；如果是False，不要下一步计划的分析
+  enable_clarification: False # 是否需要澄清问题，如果为True, 将会先澄清问题；如果是False，将会跳过澄清环节，直接进行搜索

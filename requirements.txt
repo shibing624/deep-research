@@ -1,5 +1,5 @@
 loguru
 openai
 httpx
-gradio==5.20.1
+gradio==5.22.0
 pyyaml
