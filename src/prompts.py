@@ -5,9 +5,6 @@
 
 Prompts used for deep research functionality.
 """
-from datetime import datetime
-
-now = datetime.now().isoformat()
 
 SHOULD_CLARIFY_QUERY_PROMPT = """
 请判断以下查询是否需要澄清问题。
@@ -21,8 +18,10 @@ SHOULD_CLARIFY_QUERY_PROMPT = """
 
 查询是: ```{query}```
 
+当前日期是{current_date}。
+
 请只回答 "yes" 或 "no"。如果查询已经足够清晰，请回答"no"。
-""" + f"当前日期是{now}。"
+"""
 
 # Prompt for generating follow-up questions
 FOLLOW_UP_QUESTIONS_PROMPT = """
@@ -43,6 +42,9 @@ For effective questions:
 4. Consider what background information might be helpful
 5. Ask about intended use of the information (academic, personal interest, decision-making, etc.)
 
+- if User's question is written in Chinese, 需要用中文输出.
+- 当前日期是{current_date}。
+
 Format your response as a valid JSON object with the following structure:
 {{
   "needs_clarification": true/false (boolean indicating if clarification questions are needed),
@@ -58,7 +60,6 @@ Format your response as a valid JSON object with the following structure:
 
 If the query seems clear enough and doesn't require clarification, return "needs_clarification": false with an empty questions array.
 For simple factual queries or clear requests, clarification is usually not needed.
-- User's question is written in Chinese, 需要用中文输出.
 """
 
 # Prompt for processing clarifications
@@ -85,8 +86,8 @@ Based on this information, please:
 1. Summarize the original query with the additional context provided by the clarifications
 2. For questions that were not answered, use reasonable default assumptions and clearly state what you're assuming
 3. Identify if this is a simple factual query that doesn't require search
-
-- User's question is written in Chinese, 需要用中文输出.
+- if User's question is written in Chinese, 需要用中文输出.
+- 当前日期是{current_date}。
 
 Format your response as a valid JSON object with the following structure:
 {{
@@ -118,7 +119,8 @@ Since the user didn't provide any clarifications, please:
 2. Make reasonable assumptions for all ambiguous aspects
 3. Determine if this is a simple factual query that doesn't require search
 4. If possible, provide a direct answer along with the refined query
-- User's question is written in Chinese, 需要用中文输出.
+- if User's question is written in Chinese, 需要用中文输出.
+- 当前日期是{current_date}。
 
 Format your response as a valid JSON object with the following structure:
 {{
@@ -146,7 +148,8 @@ Please analyze this query and create an appropriate research plan. The number of
 - For simple questions, you might need only 1 steps
 - For moderately complex questions, 2 steps may be appropriate
 - For very complex questions, 3 or more steps may be needed
-- User's question is written in Chinese, 需要用中文输出.
+- if User's question is written in Chinese, 需要用中文输出.
+- 当前日期是{current_date}。
 
 Consider:
 1. The complexity of the query
@@ -170,7 +173,7 @@ Format your response as a valid JSON object with the following structure:
 
 Make each step logical and focused on a specific aspect of the research. Steps should build on each other, 
 and search queries should be specific and effective for web search.
-""" + f"当前日期是{now}。"
+"""
 
 # Prompt for extract search results
 EXTRACT_SEARCH_RESULTS_SYSTEM_PROMPT = "You are an expert in extracting the most relevant and detailed information from search results."
@@ -181,6 +184,9 @@ search result(Webpage Content):
 ```
 {search_results}
 ```
+
+- if User's question is written in Chinese, 需要用中文输出.
+- 当前日期是{current_date}。
 
 作为信息提取专家，请从网页内容中提取与用户查询最相关的核心片段。需要提取的内容要求：
 1. 包含具体的细节、数据、定义和重要论点，不要使用笼统的总结替代原始的详细内容
@@ -223,7 +229,8 @@ Research Summary by Step:
 Please analyze this information and provide:
 1. A set of key findings that answer the main query
 2. Identification of any areas where the research is lacking or more information is needed
-- User's question is written in Chinese, 需要用中文输出.
+- if User's question is written in Chinese, 需要用中文输出.
+- 当前日期是{current_date}。
 
 Format your response as a valid JSON object with:
 {{
@@ -244,8 +251,9 @@ FINAL_REPORT_SYSTEM_PROMPT = """You are an expert researcher. Follow these instr
 - Provide detailed explanations, I'm comfortable with lots of detail.
 - Value good arguments over authorities, the source is irrelevant.
 - Consider new technologies and contrarian ideas, not just the conventional wisdom.
-- User's question is written in Chinese, 需要用中文输出.
-""" + f"当前日期是{now}。"
+- if User's question is written in Chinese, 需要用中文输出.
+- 当前日期是{current_date}。
+"""
 
 # Prompt for final report
 FINAL_REPORT_PROMPT = """

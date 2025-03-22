@@ -13,6 +13,7 @@ import inspect
 import platform
 from typing import Optional, Callable, Dict, List, Any, Union, Tuple, AsyncGenerator
 from loguru import logger
+from datetime import datetime
 
 from .config import get_config
 from .providers import get_search_provider
@@ -27,10 +28,15 @@ from .prompts import (
     RESEARCH_SUMMARY_PROMPT,
     FINAL_REPORT_SYSTEM_PROMPT,
     FINAL_REPORT_PROMPT,
-    FINAL_ANSWER_PROMPT
+    FINAL_ANSWER_PROMPT,
 )
 from .model_utils import generate_completion, generate_json_completion
 from .search_utils import search_with_query
+
+
+def get_current_date():
+    """Return the current date in ISO format."""
+    return datetime.now().isoformat()
 
 
 def add_event_loop_policy():
@@ -98,7 +104,11 @@ async def should_clarify_query(query: str, history_context: str = '') -> bool:
     Use the language model to determine if a query needs clarification.
     """
     try:
-        prompt = SHOULD_CLARIFY_QUERY_PROMPT.format(query=query, history_context=history_context)
+        prompt = SHOULD_CLARIFY_QUERY_PROMPT.format(
+            query=query,
+            history_context=history_context,
+            current_date=get_current_date()
+        )
         result = await generate_completion(prompt, temperature=0)
         logger.debug(f"query: {query}, should clarify query result: {result}")
 
@@ -123,7 +133,11 @@ async def generate_followup_questions(query: str, history_context: str = '') -> 
     """
     try:
         # Format the prompt
-        prompt = FOLLOW_UP_QUESTIONS_PROMPT.format(query=query, history_context=history_context)
+        prompt = FOLLOW_UP_QUESTIONS_PROMPT.format(
+            query=query,
+            history_context=history_context,
+            current_date=get_current_date()  # 添加当前日期
+        )
 
         # Generate the followup questions
         result = await generate_json_completion(prompt, temperature=0.7)
@@ -188,14 +202,16 @@ async def process_clarifications(
             prompt = PROCESS_NO_CLARIFICATIONS_PROMPT.format(
                 query=query,
                 unanswered_questions="\n\n".join(unanswered) if unanswered else "None",
-                history_context=history_context
+                history_context=history_context,
+                current_date=get_current_date()
             )
         else:
             prompt = PROCESS_CLARIFICATIONS_PROMPT.format(
                 query=query,
                 clarifications="\n\n".join(clarifications),
                 unanswered_questions="\n\n".join(unanswered) if unanswered else "None",
-                history_context=history_context
+                history_context=history_context,
+                current_date=get_current_date()
             )
 
         # Generate the clarifications processing
@@ -240,7 +256,11 @@ async def generate_research_plan(query: str, history_context: str = "") -> Dict[
     """
     try:
         # Format the prompt
-        prompt = RESEARCH_PLAN_PROMPT.format(query=query, history_context=history_context)
+        prompt = RESEARCH_PLAN_PROMPT.format(
+            query=query,
+            history_context=history_context,
+            current_date=get_current_date()  # 添加当前日期
+        )
 
         # Generate the research plan
         result = await generate_json_completion(prompt, temperature=0.7)
@@ -297,7 +317,8 @@ async def extract_search_results(query: str, search_results: str) -> str:
         # Format the prompt
         prompt = EXTRACT_SEARCH_RESULTS_PROMPT.format(
             query=query,
-            search_results=limited_search_results
+            search_results=limited_search_results,
+            current_date=get_current_date()
         )
 
         # Generate the extracted_contents
@@ -343,7 +364,9 @@ async def write_final_report_stream(query: str, context: str,
     # Limit context sizes
     limited_context = limit_context_size(context, context_size // 2)
     limited_history = limit_context_size(history_context, context_size // 4)
-
+    system_message = FINAL_REPORT_SYSTEM_PROMPT.format(
+        current_date=get_current_date()
+    )
     formatted_prompt = FINAL_REPORT_PROMPT.format(
         query=query,
         context=limited_context,
@@ -352,7 +375,7 @@ async def write_final_report_stream(query: str, context: str,
 
     response_generator = await generate_completion(
         prompt=formatted_prompt,
-        system_message="You are an expert researcher providing detailed, well-structured reports in Chinese.",
+        system_message=system_message,
         temperature=0.7,
         stream=True,
         is_report=True
@@ -386,12 +409,16 @@ async def write_final_report(query: str, context: str, history_context: str = ''
     formatted_prompt = FINAL_REPORT_PROMPT.format(
         query=query,
         context=limited_context,
-        history_context=limited_history
+        history_context=limited_history,
+    )
+
+    system_message = FINAL_REPORT_SYSTEM_PROMPT.format(
+        current_date=get_current_date()
     )
 
     report = await generate_completion(
         prompt=formatted_prompt,
-        system_message=FINAL_REPORT_SYSTEM_PROMPT,
+        system_message=system_message,
         temperature=0.7,
         is_report=True
     )
@@ -422,12 +449,16 @@ async def write_final_answer(query: str, context: str, history_context: str = ''
     formatted_prompt = FINAL_ANSWER_PROMPT.format(
         query=query,
         context=limited_context,
-        history_context=limited_history
+        history_context=limited_history,
+    )
+
+    system_message = FINAL_REPORT_SYSTEM_PROMPT.format(
+        current_date=get_current_date()
     )
 
     answer = await generate_completion(
         prompt=formatted_prompt,
-        system_message=FINAL_REPORT_SYSTEM_PROMPT,
+        system_message=system_message,
         temperature=0.7,
         is_report=True
     )
@@ -888,7 +919,8 @@ async def deep_research_stream(
 
             future_research = RESEARCH_SUMMARY_PROMPT.format(
                 query=refined_query,
-                steps_summary=steps_summary_text
+                steps_summary=steps_summary_text,
+                current_date=get_current_date()
             )
 
             future_research_result = await generate_json_completion(future_research, temperature=0.7)
